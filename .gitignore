@@ -1,0 +1,12 @@
+.vscode/
+package-lock.json
+node_modules/
+tmp/
+
+.venv/
+
+*.wasm
+*.wat
+!async.wat
+
+mpack.*
