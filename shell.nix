@@ -4,7 +4,7 @@ mkShell {
 
   name = "env";
   buildInputs = [
-    figlet emscripten nodejs cmake wasmtime wabt
+    figlet emscripten nodejs cmake wasmtime wabt binaryen
   ];
 
   shellHook = ''
