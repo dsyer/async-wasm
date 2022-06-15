@@ -1,0 +1,7 @@
+{
+	"name": "runtime",
+	"description": "Shim for 'runtime' module in WASM",
+	"type": "module",
+	"module": "index.js",
+	"main": "index.js"
+}

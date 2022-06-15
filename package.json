@@ -1,6 +1,7 @@
 {
 	"type": "module",
 	"dependencies": {
-		"@msgpack/msgpack": "^2.7.2"
+		"@msgpack/msgpack": "^2.7.2",
+		"runtime": "file:./runtime"
 	}
 }
