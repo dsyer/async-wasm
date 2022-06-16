@@ -15,7 +15,25 @@ const callback = input => {
 
 const get = (ptr, len) => {
 	var msg = msgpack.decode(memory.buffer.slice(ptr, ptr + len));
-	promise = httpget(msg).then(value => callback(value));
+	promise = httpget(msg).then( response => {
+		if (response.status == 401) {
+			var auth = response.headers['www-authenticate'];
+			if (auth && auth.startsWith("Bearer ")) {
+				const fields = JSON.parse('{"' + auth.replace("Bearer ", "").replaceAll(',',',"').replaceAll('=','":') + '}');
+				const headers = msg.headers || {};
+				const url = fields.realm+"?service="+fields.service+"&scope="+fields.scope;
+				return httpget({url: url, headers: headers}).then(
+					value => {
+						var token = JSON.parse(value.data).token;
+						headers['Authorization'] = "Bearer " + token;
+						return httpget({url: msg.url, headers: headers });
+					}
+				);
+			}
+		} else {
+			return response;
+		}
+	}).then(value => callback(value));
 }
 
 const file = fs.readFileSync('./image.wasm');

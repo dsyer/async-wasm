@@ -207,7 +207,7 @@ Here it is in action (when there is a registry running on localhost):
 }
 ```
 
-It also works with Dockerhub:
+It also works with Dockerhub but currently only because of the extra authentication code in `image.js` (logically that belongs inside the WASM):
 
 ```javascript
 > await is.call({spec:{image:"nginx"}})
