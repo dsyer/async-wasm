@@ -1,10 +1,15 @@
 import http from 'http';
+import https from 'https';
 
 export function get(request) {
 	return new Promise((resolve, reject) => {
 		var url = request.url;
 		var headers = request.headers;
-		http.get(url, { "headers": headers }, response => {
+		var getter = http;
+		if (url.startsWith("https:")) {
+			getter = https;
+		}
+		getter.get(url, { "headers": headers }, response => {
 			response.setEncoding('utf8');
 			let data = '';
 			response.on('data', (chunk) => {

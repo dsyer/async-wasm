@@ -191,3 +191,31 @@ $ node
 > await ms.call({message:"Hello World"})
 { msg: 'Hello World' }
 ```
+
+## Docker Image Processor
+
+As a more "real" example we can try and write a Kubernetes resource transformation. The goal is to look in the input payload for `spec.image` and use that to extract a SHA256 label for the latest image in a Docker repository. The code for that is in `image.c`, where the call to the repository is through an external "get" function, which has to be imported into the WASM. The JavaScript implementation uses the `http` module in Node.js via a local library called "runtime".
+
+Here it is in action (when there is a registry running on localhost):
+
+```javascript
+> var is = await import("./image.js")
+> await is.call({spec:{image:"localhost:5000/apps/demo"}})
+{
+  complete: true,
+  latest_image: 'sha256:95c043ec7f3c9d5688b4e834a42ad41b936559984f4630323eaf726824a803fa'
+}
+```
+
+N.B. the library as written so far actually doesn't work with Dockerhub because that repository does not support unauthenticated metadata requests. It would be easy to fix.
+
+> NOTE: the HTTP return value from the `/v2` endpoint in the registry is quite large - it has all the image metadata attached - so we can't rely on just guessing if there is enough memory available at the bottom of the buffer in the WASM. We actually need to ask it to allocate and free memory for us. We use this pattern:
+>
+> ```javascript
+> const top = stackSave();
+> const offset = stackAlloc(len);
+> // ... do something with the memory
+> stackRestore(top);
+> ```
+> 
+> The stack manipulation functions come as standard with `emcc`, but using them does tie us to that toolchain, sadly.
