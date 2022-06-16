@@ -207,7 +207,15 @@ Here it is in action (when there is a registry running on localhost):
 }
 ```
 
-N.B. the library as written so far actually doesn't work with Dockerhub because that repository does not support unauthenticated metadata requests. It would be easy to fix.
+It also works with Dockerhub:
+
+```javascript
+> await is.call({spec:{image:"nginx"}})
+{
+  complete: true,
+  latest_image: 'sha256:51f26f0b31eb2f2da7209d4c9d585570e62573a89bb1cbd2ea57858dbd117fd3'
+}
+```
 
 > NOTE: the HTTP return value from the `/v2` endpoint in the registry is quite large - it has all the image metadata attached - so we can't rely on just guessing if there is enough memory available at the bottom of the buffer in the WASM. We actually need to ask it to allocate and free memory for us. We use this pattern:
 >
