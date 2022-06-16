@@ -1,6 +1,5 @@
 #include <string.h>
 #include <stdlib.h>
-#include <stdio.h>
 
 void replace(char *string, char *target, char *value) {
 	char *sub = strstr(string, target);
@@ -18,6 +17,14 @@ void replace(char *string, char *target, char *value) {
 	}
 }
 
+void merge(char *target, char *prefix, char *suffix) {
+	int len = strlen(prefix);
+	if (target!=prefix) {
+		strcpy(target, prefix);
+	}
+	strcpy(target + len, suffix);
+}
+
 char *computeManifestUrl(char *image)
 {
 	char label[] = "latest"; // TODO: extract from image path
@@ -25,7 +32,7 @@ char *computeManifestUrl(char *image)
 	char *path = malloc(strlen(image) + 30);
 	if (!strstr(image, "/"))
 	{
-		sprintf(path, "library/%s", image);
+		merge(path, "library/", image);
 	}
 	else
 	{
@@ -36,7 +43,7 @@ char *computeManifestUrl(char *image)
 		char *tmp = malloc(strlen(path));
 		strcpy(tmp, path);
 		// No host
-		sprintf(path, "index.docker.io/%s", tmp);
+		merge(path, "index.docker.io/", tmp);
 		free(tmp);
 	}
 	replace(path, "/", "/v2/");
@@ -49,7 +56,9 @@ char *computeManifestUrl(char *image)
 		// path = path.replaceFirst("localhost", "registry");
 	}
 	char *url = malloc(strlen(protocol) + strlen(path) + strlen(label) + strlen("/manifests/"));
-	sprintf(url, "%s%s/manifests/%s", protocol, path, label);
+	merge(url, protocol, path);
+	merge(url, url, "/manifests/");
+	merge(url, url, label);
 	free(path);
 	return url;
 }

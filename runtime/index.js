@@ -19,7 +19,3 @@ export function get(request) {
 		});
 	});
 }
-
-export function log(str) {
-	console.log(str);
-}

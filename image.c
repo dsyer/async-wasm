@@ -10,22 +10,12 @@ typedef struct _buffer
 	size_t len;
 } buffer;
 
-mpack_node_t parse(char *input, size_t len)
+char *extractImage(char *input, size_t len)
 {
 	mpack_tree_t tree;
 	mpack_tree_init_data(&tree, input, len);
 	mpack_tree_parse(&tree);
 	mpack_node_t root = mpack_tree_root(&tree);
-	return root;
-}
-
-char *extractImage(char *input, size_t len)
-{
-	mpack_node_t root = parse(input, len);
-	if (!mpack_node_map_contains_cstr(root, "headers"))
-	{
-		return NULL;
-	}
 	mpack_node_t headers = mpack_node_map_cstr_optional(root, "headers");
 	if (mpack_node_is_missing(headers))
 	{
@@ -74,7 +64,11 @@ buffer *callback(char *input, size_t len)
 
 void call(char *input, size_t len)
 {
-	mpack_node_t root = parse(input, len);
+	mpack_tree_t tree;
+	mpack_tree_init_data(&tree, input, len);
+	mpack_tree_parse(&tree);
+	mpack_node_t root = mpack_tree_root(&tree);
+
 	mpack_node_t spec = mpack_node_map_cstr_optional(root, "spec");
 	if (mpack_node_is_missing(spec))
 	{
@@ -99,6 +93,7 @@ void call(char *input, size_t len)
 	mpack_write_cstr(&writer, url);
 	mpack_complete_map(&writer);
 	mpack_writer_destroy(&writer);
+	free(url);
 
 	get(result->data, result->len);
 }
