@@ -192,9 +192,68 @@ $ node
 { msg: 'Hello World' }
 ```
 
+## Virtual Functions
+
+If we needed to call the `get()` function from the example above (for instance) more then once, and do something different with the result each time, we would need some indirection. The `get()` function can pick up an extra argument which is a pointer to the callback:
+
+```c
+void get(buffer *(*fn)(char*, size_t), char *input, size_t len);
+```
+
+All it has to do in the runtime implementation is pass that pointer down to a convenience function:
+
+```javascript
+const get = (fn, ptr, len) =>  {
+	var msg = msgpack.decode(wasm.instance.exports.memory.buffer.slice(ptr, ptr + len));
+	promise = new Promise((resolve, reject) => {
+		resolve(msg);
+	}).then(value => callback(fn, value, ptr + len));
+}
+```
+
+where `callack()` is now a generic virtual dispatch:
+
+```c
+buffer *callback(buffer *(*fn)(char*, size_t), char *input, size_t len) {
+	return fn(input, len);
+}
+```
+
+The implementation of the main entry point `call()` now just passes the pointer to the desired callback into `get()`. The actual business logic is encapsulated in a private, not exported function named (arbitrarily in this example) `xform`:
+
+```c
+buffer *xform(char *input, size_t len)
+{
+	// ... compute xform
+	return result;
+}
+
+void call(char *input, size_t len)
+{
+	// ... compute input for get() ...
+	get(xform, result->data, result->len);
+}
+```
+
+Compile and run:
+
+```
+$ emcc -Os -s EXPORTED_FUNCTIONS="[_call,_callback]" -Wl,--no-entry -I include message.c lib/libmpack.a -o message.wasm
+$ node
+> var ms = await import("./message.js")
+> await ms.call({message:"Hello World"})
+{ msg: 'Hello World' }
+```
+
 ## Docker Image Processor
 
 As a more "real" example we can try and write a Kubernetes resource transformation. The goal is to look in the input payload for `spec.image` and use that to extract a SHA256 label for the latest image in a Docker repository. The code for that is in `image.c`, where the call to the repository is through an external "get" function, which has to be imported into the WASM. The JavaScript implementation uses the `http` module in Node.js via a local library called "runtime".
+
+Compile the WASM:
+
+```
+$ emcc -Os -s ERROR_ON_UNDEFINED_SYMBOLS=0 -s EXPORTED_FUNCTIONS="[_call,_callback]" -Wl,--no-entry -I include image.c lib/libmpack.a -o image.wasm
+```
 
 Here it is in action (when there is a registry running on localhost):
 

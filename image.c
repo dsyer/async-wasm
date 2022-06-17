@@ -1,14 +1,14 @@
 #include "mpack.h"
 #include <stdlib.h>
-
-void get(char *input, size_t len);
-char *computeManifestUrl(char *image);
+#include "util.c"
 
 typedef struct _buffer
 {
 	char *data;
 	size_t len;
 } buffer;
+
+void get(buffer *(*fn)(char*, size_t), char *input, size_t len);
 
 char *extractImage(char *input, size_t len)
 {
@@ -36,7 +36,11 @@ char *extractImage(char *input, size_t len)
 	return buffer;
 }
 
-buffer *callback(char *input, size_t len)
+buffer *callback(buffer *(*fn)(char*, size_t), char *input, size_t len) {
+	return fn(input, len);
+}
+
+buffer *status(char *input, size_t len)
 {
 	char *digest = extractImage(input, len);
 
@@ -95,5 +99,5 @@ void call(char *input, size_t len)
 	mpack_writer_destroy(&writer);
 	free(url);
 
-	get(result->data, result->len);
+	get(status, result->data, result->len);
 }

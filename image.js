@@ -3,17 +3,17 @@ import { get as httpget } from 'runtime';
 
 let promise;
 
-const callback = input => {
+const callback = (fn, input) => {
 	var msg = msgpack.encode(input);
 	const top = stackSave();
 	const offset = stackAlloc(msg.length);
 	new Uint8Array(memory.buffer, offset, msg.length).set(msg)
-	var result = new Uint32Array(memory.buffer, wasm.instance.exports.callback(offset, msg.length), 2);
+	var result = new Uint32Array(memory.buffer, wasm.instance.exports.callback(fn, offset, msg.length), 2);
 	stackRestore(top);
 	return msgpack.decode(memory.buffer.slice(result[0], result[0] + result[1]));
 }
 
-const get = (ptr, len) => {
+const get = (fn, ptr, len) => {
 	var msg = msgpack.decode(memory.buffer.slice(ptr, ptr + len));
 	promise = httpget(msg).then( response => {
 		if (response.status == 401) {
@@ -33,11 +33,11 @@ const get = (ptr, len) => {
 		} else {
 			return response;
 		}
-	}).then(value => callback(value));
+	}).then(value => callback(fn, value));
 }
 
 const file = fs.readFileSync('./image.wasm');
-let wasm = await WebAssembly.instantiate(file, { "env": { "get": get } });
+let wasm = await WebAssembly.instantiate(file, { "env": { "get": get, "callback": callback } });
 let { stackSave, stackAlloc, stackRestore, memory } = wasm.instance.exports;
 
 export async function call(input) {
