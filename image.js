@@ -1,39 +1,38 @@
 import * as msgpack from '@msgpack/msgpack';
 import { get as httpget } from 'runtime';
 
-let promise;
+let promises = {};
 
-const callback = (fn, input) => {
+const callback = (output, fn, input) => {
 	var msg = msgpack.encode(input);
 	const top = stackSave();
 	const offset = stackAlloc(msg.length);
 	new Uint8Array(memory.buffer, offset, msg.length).set(msg)
-	var result = new Uint32Array(memory.buffer, wasm.instance.exports.callback(fn, offset, msg.length), 2);
+	wasm.instance.exports.callback(output, fn, offset, msg.length);
+	var result = new Uint32Array(memory.buffer, output, 3);
+	var value;
+	if (result[2]) {
+		value = promises[output].promise;
+	} else {
+		value = msgpack.decode(memory.buffer.slice(result[0], result[0] + result[1]));
+		delete promises[output];
+	}
 	stackRestore(top);
-	return msgpack.decode(memory.buffer.slice(result[0], result[0] + result[1]));
+	return value;
 }
 
-const get = (fn, ptr, len) => {
-	var msg = msgpack.decode(memory.buffer.slice(ptr, ptr + len));
-	promise = httpget(msg).then( response => {
-		if (response.status == 401) {
-			var auth = response.headers['www-authenticate'];
-			if (auth && auth.startsWith("Bearer ")) {
-				const fields = JSON.parse('{"' + auth.replace("Bearer ", "").replaceAll(',',',"').replaceAll('=','":') + '}');
-				const headers = msg.headers || {};
-				const url = fields.realm+"?service="+fields.service+"&scope="+fields.scope;
-				return httpget({url: url, headers: headers}).then(
-					value => {
-						var token = JSON.parse(value.data).token;
-						headers['Authorization'] = "Bearer " + token;
-						return httpget({url: msg.url, headers: headers });
-					}
-				);
-			}
-		} else {
-			return response;
-		}
-	}).then(value => callback(fn, value));
+const get = (output, fn, offset) => {
+	new Uint32Array(memory.buffer, output, 3).set([0, 0, fn]);
+	const view = new Uint32Array(memory.buffer, offset, 3);
+	var input = {
+		ptr: view[0],
+		len: view[1],
+		callback: view[2]
+	};
+	var msg = msgpack.decode(memory.buffer.slice(input.ptr, input.ptr + input.len));
+	promises[output] = {
+		promise: httpget(msg).then(value => callback(output, fn, value)),
+		callback: fn};
 }
 
 const file = fs.readFileSync('./image.wasm');
@@ -48,9 +47,10 @@ export async function call(input) {
 	const top = stackSave();
 	const offset = stackAlloc(msg.length);
 	new Uint8Array(memory.buffer, offset, msg.length).set(msg)
-	wasm.instance.exports.call(offset, msg.length);
+	var output = stackAlloc(8);
+	wasm.instance.exports.call(output, offset, msg.length);
 	stackRestore(top);
-	return promise;
+	return output && promises[output].promise;
 };
 
 export { wasm };

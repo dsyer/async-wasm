@@ -6,9 +6,10 @@ typedef struct _buffer
 {
 	char *data;
 	size_t len;
+	void (*callback)(char*, int);
 } buffer;
 
-void get(buffer *(*fn)(char*, size_t), char *input, size_t len);
+buffer get(buffer (*fn)(char*, size_t), buffer *input);
 
 char *extractImage(char *input, size_t len)
 {
@@ -36,17 +37,17 @@ char *extractImage(char *input, size_t len)
 	return buffer;
 }
 
-buffer *callback(buffer *(*fn)(char*, size_t), char *input, size_t len) {
+buffer callback(buffer (*fn)(char*, size_t), char *input, size_t len) {
 	return fn(input, len);
 }
 
-buffer *status(char *input, size_t len)
+buffer status(char *input, size_t len)
 {
 	char *digest = extractImage(input, len);
 
 	mpack_writer_t writer;
-	buffer *result = malloc(sizeof(buffer));
-	mpack_writer_init_growable(&writer, &result->data, &result->len);
+	buffer result = {NULL, 0, NULL};
+	mpack_writer_init_growable(&writer, &result.data, &result.len);
 	mpack_build_map(&writer);
 	if (digest)
 	{
@@ -66,22 +67,23 @@ buffer *status(char *input, size_t len)
 	return result;
 }
 
-void call(char *input, size_t len)
+buffer call(char *input, size_t len)
 {
 	mpack_tree_t tree;
 	mpack_tree_init_data(&tree, input, len);
 	mpack_tree_parse(&tree);
 	mpack_node_t root = mpack_tree_root(&tree);
 
+	buffer *result = malloc(sizeof(buffer));
 	mpack_node_t spec = mpack_node_map_cstr_optional(root, "spec");
 	if (mpack_node_is_missing(spec))
 	{
-		return;
+		return *result;
 	}
 	mpack_node_t image = mpack_node_map_cstr_optional(spec, "image");
 	if (mpack_node_is_missing(image))
 	{
-		return;
+		return *result;
 	}
 	int rlen = mpack_node_strlen(image);
 	char *path = malloc(rlen + 1);
@@ -89,7 +91,6 @@ void call(char *input, size_t len)
 	char *url = computeManifestUrl(path);
 	free(path);
 
-	buffer *result = malloc(sizeof(buffer));
 	mpack_writer_t writer;
 	mpack_writer_init_growable(&writer, &result->data, &result->len);
 	mpack_build_map(&writer);
@@ -99,5 +100,5 @@ void call(char *input, size_t len)
 	mpack_writer_destroy(&writer);
 	free(url);
 
-	get(status, result->data, result->len);
+	return get(status, result);
 }

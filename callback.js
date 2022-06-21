@@ -9,18 +9,14 @@ function convert(offset) {
 	return result;
 }
 
-const callback = (current, fn, input) => {
-	var value = convert(current);
-	const top = stackSave();
-	const output = stackAlloc(8);
+const callback = (output, fn, input) => {
 	wasm.instance.exports.callback(output, fn, input);
-	value = convert(output);
-	stackRestore(top);
+	var value = convert(output);
 	if (value.callback != 0) {
 		value = promises[output].promise;
 	} else {
 		value = value.value;
-		delete promises[current]
+		delete promises[output]
 	}
 	return value;
 }
@@ -44,7 +40,6 @@ export async function call(input) {
 	const top = stackSave();
 	const output = stackAlloc(8);
 	wasm.instance.exports.call(output, input);
-	var result = convert(output);
 	stackRestore(top);
 	return promises[output].promise;
 };
