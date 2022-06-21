@@ -1,11 +1,10 @@
 let promises = {};
 
 function convert(offset) {
-	const view = new Uint32Array(memory.buffer, offset, 3);
+	const view = new Uint32Array(memory.buffer, offset, 2);
 	var result = {
-		done: view[0] != 0,
-		callback: view[1],
-		value: view[2]
+		callback: view[0],
+		value: view[1]
 	};
 	return result;
 }
@@ -13,11 +12,11 @@ function convert(offset) {
 const callback = (current, fn, input) => {
 	var value = convert(current);
 	const top = stackSave();
-	const output = stackAlloc(12);
+	const output = stackAlloc(8);
 	wasm.instance.exports.callback(output, fn, input);
 	value = convert(output);
 	stackRestore(top);
-	if (!value.done && promises[output]) {
+	if (value.callback != 0) {
 		value = promises[output].promise;
 	} else {
 		value = value.value;
@@ -27,7 +26,7 @@ const callback = (current, fn, input) => {
 }
 
 const get = (output, fn, input) => {
-	new Uint32Array(memory.buffer, output, 3).set([0, fn, 0]);
+	new Uint32Array(memory.buffer, output, 2).set([fn, 0]);
 	promises[output] = {
 		promise: new Promise((resolve, error) => {
 			resolve(input);
@@ -43,7 +42,7 @@ let { stackSave, stackAlloc, stackRestore, memory } = wasm.instance.exports;
 export async function call(input) {
 	input ||= 0;
 	const top = stackSave();
-	const output = stackAlloc(12);
+	const output = stackAlloc(8);
 	wasm.instance.exports.call(output, input);
 	var result = convert(output);
 	stackRestore(top);

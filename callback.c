@@ -3,7 +3,6 @@
 
 typedef struct
 {
-	bool done;
 	void (*callback)(int);
 	int value;
 } Result;
@@ -17,7 +16,7 @@ Result callback(Result (*callback)(int), int input)
 
 Result callback0(int input)
 {
-	Result result = {true, NULL, input + 1};
+	Result result = {NULL, input + 1};
 	return result;
 }
 
@@ -32,7 +31,7 @@ Result callback2(int input)
 	{
 		return get(callback1, input);
 	}
-	Result result = {true, NULL, input + 3};
+	Result result = {NULL, input + 3};
 	return result;
 }
 
