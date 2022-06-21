@@ -1,25 +1,42 @@
 #include <stdio.h>
+#include <stdbool.h>
 
-void get(int input, int (*callback)(int));
+typedef struct
+{
+	bool done;
+	void (*callback)(int);
+	int value;
+} Result;
 
-int callback(int input, int (*callback)(int)) {
+Result get(Result (*result)(int), int input);
+
+Result callback(Result (*callback)(int), int input)
+{
 	return callback(input);
 }
 
-int callback1(int input) {
-	return input + 1;
-}
-int callback2(int input) {
-	return input + 2;
+Result callback0(int input)
+{
+	Result result = {true, NULL, input + 1};
+	return result;
 }
 
-void call(int input)
+Result callback1(int input)
 {
-	int (*callback)(int);
-	if (input<2) {
-		callback = callback1;
-	} else {
-		callback = callback2;
+	return get(callback0, input + 1);
+}
+
+Result callback2(int input)
+{
+	if (input < 2)
+	{
+		return get(callback1, input);
 	}
-	get(input, callback);
+	Result result = {true, NULL, input + 3};
+	return result;
+}
+
+Result call(int input)
+{
+	return get(callback2, input);
 }
