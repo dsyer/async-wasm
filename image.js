@@ -17,7 +17,7 @@ const callback = (output, fn, input, context) => {
 	var result = new Uint32Array(memory.buffer, output, 4);
 	var value;
 	if (result[2]) {
-		value = promises[output].promise;
+		value = promises[output];
 	} else {
 		value = msgpack.decode(memory.buffer.slice(result[0], result[0] + result[1]));
 		delete promises[output];
@@ -36,9 +36,7 @@ const get = (output, fn, offset) => {
 	};
 	new Uint32Array(memory.buffer, output, 4).set([0, 0, fn, input.context]);
 	var msg = msgpack.decode(memory.buffer.slice(input.ptr, input.ptr + input.len));
-	promises[output] = {
-		promise: httpget(msg).then(value => callback(output, fn, value, input.context)),
-		callback: fn};
+	promises[output] = httpget(msg).then(value => callback(output, fn, value, input.context));
 }
 
 const file = fs.readFileSync('./image.wasm');
@@ -56,7 +54,7 @@ export async function call(input) {
 	var output = stackAlloc(12);
 	wasm.instance.exports.call(output, offset, msg.length);
 	stackRestore(top);
-	return output && promises[output].promise;
+	return output && promises[output];
 };
 
 export { wasm };
