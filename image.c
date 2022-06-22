@@ -2,24 +2,24 @@
 #include <stdlib.h>
 #include "util.c"
 
-typedef struct _buffer
+typedef struct
 {
 	char *data;
 	size_t len;
 	void (*callback)(char *, int);
 	void *context;
-} buffer;
+} future;
 
-buffer get(buffer (*fn)(buffer *), buffer *input);
+future get(future (*fn)(future *), future *input);
 
-buffer callback(buffer (*fn)(buffer *), buffer *input)
+future callback(future (*fn)(future *), future *input)
 {
 	return fn(input);
 }
 
-buffer status(buffer *input);
+future status(future *input);
 
-buffer token(buffer *input)
+future token(future *input)
 {
 
 	mpack_tree_t tree;
@@ -27,7 +27,7 @@ buffer token(buffer *input)
 	mpack_tree_parse(&tree);
 	mpack_node_t root = mpack_tree_root(&tree);
 
-	buffer *result = malloc(sizeof(buffer));
+	future *result = malloc(sizeof(future));
 	result->context = input->context;
 
 	mpack_node_t data = mpack_node_map_cstr_optional(root, "data");
@@ -67,7 +67,7 @@ buffer token(buffer *input)
 	return get(status, result);
 }
 
-buffer authentication(buffer *input)
+future authentication(future *input)
 {
 
 	mpack_tree_t tree;
@@ -75,7 +75,7 @@ buffer authentication(buffer *input)
 	mpack_tree_parse(&tree);
 	mpack_node_t root = mpack_tree_root(&tree);
 
-	buffer *result = malloc(sizeof(buffer));
+	future *result = malloc(sizeof(future));
 	result->context = input->context;
 	mpack_node_t headers = mpack_node_map_cstr_optional(root, "headers");
 	if (mpack_node_is_missing(headers))
@@ -125,12 +125,12 @@ char *extractImage(mpack_node_t root)
 		}
 	}
 	int rlen = mpack_node_strlen(header);
-	char *buffer = malloc(rlen + 1);
-	mpack_node_copy_cstr(header, buffer, rlen + 1);
-	return buffer;
+	char *image = malloc(rlen + 1);
+	mpack_node_copy_cstr(header, image, rlen + 1);
+	return image;
 }
 
-buffer status(buffer *input)
+future status(future *input)
 {
 	mpack_tree_t tree;
 	mpack_tree_init_data(&tree, input->data, input->len);
@@ -147,7 +147,7 @@ buffer status(buffer *input)
 	char *digest = extractImage(root);
 
 	mpack_writer_t writer;
-	buffer result = {NULL, 0, NULL};
+	future result = {NULL, 0, NULL};
 	mpack_writer_init_growable(&writer, &result.data, &result.len);
 	mpack_build_map(&writer);
 	if (digest)
@@ -168,14 +168,14 @@ buffer status(buffer *input)
 	return result;
 }
 
-buffer call(char *input, size_t len)
+future call(char *input, size_t len)
 {
 	mpack_tree_t tree;
 	mpack_tree_init_data(&tree, input, len);
 	mpack_tree_parse(&tree);
 	mpack_node_t root = mpack_tree_root(&tree);
 
-	buffer *result = malloc(sizeof(buffer));
+	future *result = malloc(sizeof(future));
 	mpack_node_t spec = mpack_node_map_cstr_optional(root, "spec");
 	if (mpack_node_is_missing(spec))
 	{
