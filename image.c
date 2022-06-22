@@ -6,7 +6,7 @@ typedef struct
 {
 	char *data;
 	size_t len;
-	void (*callback)(char *, int);
+	void (*callback)(void*);
 	void *context;
 } future;
 
