@@ -6,17 +6,110 @@ typedef struct _buffer
 {
 	char *data;
 	size_t len;
-	void (*callback)(char*, int);
+	void (*callback)(char *, int);
+	void *context;
 } buffer;
 
-buffer get(buffer (*fn)(char*, size_t), buffer *input);
+buffer get(buffer (*fn)(buffer *), buffer *input);
 
-char *extractImage(char *input, size_t len)
+buffer callback(buffer (*fn)(buffer *), buffer *input)
 {
+	return fn(input);
+}
+
+buffer status(buffer *input);
+
+buffer token(buffer *input)
+{
+
 	mpack_tree_t tree;
-	mpack_tree_init_data(&tree, input, len);
+	mpack_tree_init_data(&tree, input->data, input->len);
 	mpack_tree_parse(&tree);
 	mpack_node_t root = mpack_tree_root(&tree);
+
+	buffer *result = malloc(sizeof(buffer));
+	result->context = input->context;
+
+	mpack_node_t data = mpack_node_map_cstr_optional(root, "data");
+	if (mpack_node_is_missing(data))
+	{
+		return *result;
+	}
+	mpack_node_t field = mpack_node_map_cstr_optional(data, "token");
+	if (mpack_node_is_missing(field))
+	{
+		return *result;
+	}
+	int rlen = mpack_node_strlen(field);
+	char *token = malloc(rlen + 1);
+	mpack_node_copy_cstr(field, token, rlen + 1);
+	char* auth = malloc(rlen + 1 + strlen("Bearer "));
+	merge(auth, "Bearer ", token);
+	free(token);
+
+	mpack_writer_t writer;
+	mpack_writer_init_growable(&writer, &result->data, &result->len);
+	mpack_build_map(&writer);
+
+	mpack_write_cstr(&writer, "url");
+	mpack_write_cstr(&writer, (char*)input->context);
+	mpack_write_cstr(&writer, "headers");
+	mpack_build_map(&writer);
+	mpack_write_cstr(&writer, "authorization");
+	mpack_write_cstr(&writer, auth);
+	mpack_complete_map(&writer);
+
+	mpack_complete_map(&writer);
+	mpack_writer_destroy(&writer);
+
+	free(auth);
+
+	return get(status, result);
+}
+
+buffer authentication(buffer *input)
+{
+
+	mpack_tree_t tree;
+	mpack_tree_init_data(&tree, input->data, input->len);
+	mpack_tree_parse(&tree);
+	mpack_node_t root = mpack_tree_root(&tree);
+
+	buffer *result = malloc(sizeof(buffer));
+	result->context = input->context;
+	mpack_node_t headers = mpack_node_map_cstr_optional(root, "headers");
+	if (mpack_node_is_missing(headers))
+	{
+		return *result;
+	}
+	mpack_node_t header = mpack_node_map_cstr_optional(headers, "www-authenticate");
+	if (mpack_node_is_missing(header))
+	{
+		header = mpack_node_map_cstr_optional(headers, "WWW-Authenticate");
+		if (mpack_node_is_missing(header))
+		{
+			return *result;
+		}
+	}
+	int rlen = mpack_node_strlen(header);
+	char *auth = malloc(rlen + 1);
+	mpack_node_copy_cstr(header, auth, rlen + 1);
+
+	mpack_writer_t writer;
+	mpack_writer_init_growable(&writer, &result->data, &result->len);
+	mpack_build_map(&writer);
+
+	mpack_write_cstr(&writer, "url");
+	mpack_write_cstr(&writer, computeTokenUrl(auth));
+
+	mpack_complete_map(&writer);
+	mpack_writer_destroy(&writer);
+
+	return get(token, result);
+}
+
+char *extractImage(mpack_node_t root)
+{
 	mpack_node_t headers = mpack_node_map_cstr_optional(root, "headers");
 	if (mpack_node_is_missing(headers))
 	{
@@ -37,13 +130,21 @@ char *extractImage(char *input, size_t len)
 	return buffer;
 }
 
-buffer callback(buffer (*fn)(char*, size_t), char *input, size_t len) {
-	return fn(input, len);
-}
-
-buffer status(char *input, size_t len)
+buffer status(buffer *input)
 {
-	char *digest = extractImage(input, len);
+	mpack_tree_t tree;
+	mpack_tree_init_data(&tree, input->data, input->len);
+	mpack_tree_parse(&tree);
+	mpack_node_t root = mpack_tree_root(&tree);
+
+	mpack_node_t status = mpack_node_map_cstr_optional(root, "status");
+	int code = mpack_node_int(status);
+	if (code == 401)
+	{
+		return authentication(input);
+	}
+
+	char *digest = extractImage(root);
 
 	mpack_writer_t writer;
 	buffer result = {NULL, 0, NULL};
@@ -98,7 +199,7 @@ buffer call(char *input, size_t len)
 	mpack_write_cstr(&writer, url);
 	mpack_complete_map(&writer);
 	mpack_writer_destroy(&writer);
-	free(url);
+	result->context = url;
 
 	return get(status, result);
 }

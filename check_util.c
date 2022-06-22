@@ -10,6 +10,26 @@ START_TEST(test_manifest)
 }
 END_TEST
 
+START_TEST(test_token)
+{
+	char *result = computeTokenUrl("Bearer realm=https://foo.com,service=foo,scope=bar");
+	printf("%s\n", result);
+	if (strcmp(result, "https://foo.com?service=foo&scope=bar") != 0) {
+		ck_abort_msg("Should be %s but was %s", "https://foo.com?service=foo&scope=bar", result);
+	}
+}
+END_TEST
+
+START_TEST(test_token_quoted)
+{
+	char *result = computeTokenUrl("Bearer realm=\"https://foo.com\",service=\"foo\",scope=\"bar\"");
+	printf("%s\n", result);
+	if (strcmp(result, "https://foo.com?service=foo&scope=bar") != 0) {
+		ck_abort_msg("Should be %s but was %s", "https://foo.com?service=foo&scope=bar", result);
+	}
+}
+END_TEST
+
 Suite *suite(void)
 {
 	Suite *s;
@@ -22,6 +42,8 @@ Suite *suite(void)
 	tc_core = tcase_create("Core");
 
 	tcase_add_test(tc_core, test_manifest);
+	tcase_add_test(tc_core, test_token);
+	tcase_add_test(tc_core, test_token_quoted);
 	suite_add_tcase(s, tc_core);
 
 	return s;

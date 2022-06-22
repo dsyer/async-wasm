@@ -1,28 +1,98 @@
 #include <string.h>
 #include <stdlib.h>
 
-void replace(char *string, char *target, char *value) {
+void replace(char *string, char *target, char *value)
+{
 	char *sub = strstr(string, target);
-	if (!sub) {
+	if (!sub)
+	{
 		return;
 	}
 	int tlen = strlen(target);
 	int vlen = strlen(value);
 	int slen = strlen(string);
-	for (char *ptr = string + slen + vlen - tlen; ptr-->sub + tlen;) {
+	for (char *ptr = string + slen + vlen - tlen; ptr-- > sub + tlen;)
+	{
 		ptr[vlen - tlen] = ptr[0];
 	}
-	for (char *ptr = sub; ptr < sub + vlen; ptr++) {
-		ptr[0] = value[ptr-sub];
+	for (char *ptr = sub; ptr < sub + vlen; ptr++)
+	{
+		ptr[0] = value[ptr - sub];
 	}
 }
 
-void merge(char *target, char *prefix, char *suffix) {
+void merge(char *target, char *prefix, char *suffix)
+{
 	int len = strlen(prefix);
-	if (target!=prefix) {
+	if (target != prefix && target != suffix)
+	{
 		strcpy(target, prefix);
+		strcpy(target + len, suffix);
 	}
-	strcpy(target + len, suffix);
+	else if (target != prefix)
+	{
+		char *tmp = malloc(strlen(target) + 1);
+		strcpy(tmp, target);
+		strcpy(target, prefix);
+		strcpy(target + len, tmp);
+		free(tmp);
+	}
+	else
+	{
+		strcpy(target + len, suffix);
+	}
+}
+
+char *find(char *fields, char *field)
+{
+	const char delim[] = ",";
+	char *token = strtok(fields, delim);
+
+	while (token)
+	{
+		if (strstr(token, field)) {
+			int nlen = strlen(field);
+			int tlen = strlen(token) - nlen;
+			if (token[nlen] == '"') {
+				char* result = malloc(tlen - 1);
+				strncpy(result, token + nlen + 1, tlen - 2);
+				result[tlen-2] = '\0';
+				return result;
+			}
+			return strdup(token + nlen);
+		}
+		token = strtok(0, delim);
+	}
+	return NULL;
+}
+
+char *computeTokenUrl(char *auth)
+{
+	char *path = malloc(strlen(auth) + 1);
+	if (!strstr(auth, "Bearer "))
+	{
+		return NULL;
+	}
+	char *copy = malloc(strlen(auth) + 1 - strlen("Bearer "));
+	strcpy(copy, auth + strlen("Bearer "));
+	char *realm = find(strdup(copy), "realm=");
+	char *scope = find(strdup(copy), "scope=");
+	char *service = find(strdup(copy), "service=");
+
+	if (!realm || !scope || !service) {
+		return NULL;
+	}
+
+	merge(path, realm, "?service=");
+	merge(path, path, service);
+	merge(path, path, "&scope=");
+	merge(path, path, scope);
+
+	free(realm);
+	free(service);
+	free(scope);
+
+	return path;
 }
 
 char *computeManifestUrl(char *image)
@@ -40,11 +110,8 @@ char *computeManifestUrl(char *image)
 	}
 	if (!strstr(image, ".") && !strstr(image, ":"))
 	{
-		char *tmp = malloc(strlen(path));
-		strcpy(tmp, path);
 		// No host
-		merge(path, "index.docker.io/", tmp);
-		free(tmp);
+		merge(path, "index.docker.io/", path);
 	}
 	replace(path, "/", "/v2/");
 	char start[9];

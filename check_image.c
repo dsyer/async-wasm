@@ -2,13 +2,20 @@
 #include <check.h>
 
 #include "./image.c"
-#include "./util.c"
 
 char *url;
 
-void get(char *input, size_t len)
+mpack_node_t parse(char *data, size_t len) {
+	mpack_tree_t tree;
+	mpack_tree_init_data(&tree, data, len);
+	mpack_tree_parse(&tree);
+	mpack_node_t root = mpack_tree_root(&tree);
+	return root;
+}
+
+buffer get(buffer (*fn)(buffer *), buffer *input)
 {
-	mpack_node_t node = parse(input, len);
+	mpack_node_t node = parse(input->data, input->len);
 	int ulen = mpack_node_strlen(mpack_node_map_cstr(node, "url"));
 	char *buffer = malloc(ulen + 1);
 	if (ulen)
@@ -17,6 +24,7 @@ void get(char *input, size_t len)
 	}
 	url = buffer;
 	printf("{url: \"%s\"}\n", buffer);
+	return *input;
 }
 
 START_TEST(test_call)
@@ -49,16 +57,19 @@ START_TEST(test_manifest_no_digest)
 	mpack_writer_t writer;
 	buffer *input = malloc(sizeof(buffer));
 	mpack_writer_init_growable(&writer, &input->data, &input->len);
+	mpack_build_map(&writer);
+	mpack_write_cstr(&writer, "status");
+	mpack_write_int(&writer, 200);
+	mpack_complete_map(&writer);
 	mpack_writer_destroy(&writer);
-	buffer *result = callback(input->data, input->len);
-	mpack_node_t node = parse(result->data, result->len);
+	buffer result = callback(status, input);
+	mpack_node_t node = parse(result.data, result.len);
 	bool complete = mpack_node_bool(mpack_node_map_cstr(node, "complete"));
 	if (complete)
 	{
 		ck_abort_msg("Should be incomplete");
 	}
 	free(input);
-	free(result);
 }
 END_TEST
 
@@ -68,6 +79,8 @@ START_TEST(test_manifest)
 	buffer *input = malloc(sizeof(buffer));
 	mpack_writer_init_growable(&writer, &input->data, &input->len);
 	mpack_build_map(&writer);
+	mpack_write_cstr(&writer, "status");
+	mpack_write_int(&writer, 200);
 	mpack_write_cstr(&writer, "headers");
 	mpack_build_map(&writer);
 	mpack_write_cstr(&writer, "docker-content-digest");
@@ -75,8 +88,8 @@ START_TEST(test_manifest)
 	mpack_complete_map(&writer);
 	mpack_complete_map(&writer);
 	mpack_writer_destroy(&writer);
-	buffer *result = callback(input->data, input->len);
-	mpack_node_t node = parse(result->data, result->len);
+	buffer result = callback(status, input);
+	mpack_node_t node = parse(result.data, result.len);
 	int len = mpack_node_strlen(mpack_node_map_cstr(node, "latest_image"));
 	char *buffer = malloc(len + 1);
 	mpack_node_copy_cstr(mpack_node_map_cstr(node, "latest_image"), buffer, len + 1);
@@ -91,7 +104,6 @@ START_TEST(test_manifest)
 		ck_abort_msg("Should be complete");
 	}
 	free(input);
-	free(result);
 }
 END_TEST
 
@@ -108,7 +120,7 @@ START_TEST(test_digest)
 	mpack_complete_map(&writer);
 	mpack_complete_map(&writer);
 	mpack_writer_destroy(&writer);
-	char *result = extractImage(input->data, input->len);
+	char *result = extractImage(parse(input->data, input->len));
 	printf("{digest: \"%s\"}\n", result);
 	if (strcmp(result, "foobarspam") != 0)
 	{
@@ -130,7 +142,7 @@ START_TEST(test_digest_caps)
 	mpack_complete_map(&writer);
 	mpack_complete_map(&writer);
 	mpack_writer_destroy(&writer);
-	char *result = extractImage(input->data, input->len);
+	char *result = extractImage(parse(input->data, input->len));
 	printf("{digest: \"%s\"}\n", result);
 	if (strcmp(result, "foobarspam") != 0)
 	{
@@ -147,7 +159,7 @@ START_TEST(test_digest_no_headers)
 	mpack_build_map(&writer);
 	mpack_complete_map(&writer);
 	mpack_writer_destroy(&writer);
-	char *result = extractImage(input->data, input->len);
+	char *result = extractImage(parse(input->data, input->len));
 	if (result)
 	{
 		ck_abort_msg("Headers were empty but result was not");
