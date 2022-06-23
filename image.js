@@ -49,8 +49,6 @@ let { stackSave, stackAlloc, stackRestore, memory } = wasm.instance.exports;
 
 export async function call(input) {
 	input ||= {};
-	input.spec ||= {}; 
-	input.spec.image ||= "apps/demo"; 
 	var msg = msgpack.encode(input);
 	const top = stackSave();
 	const offset = stackAlloc(msg.length);
@@ -58,7 +56,7 @@ export async function call(input) {
 	var output = stackAlloc(12);
 	wasm.instance.exports.call(output, offset, msg.length);
 	stackRestore(top);
-	return output && promises[output];
+	return output && promises[output] || {};
 };
 
 export { wasm };
