@@ -19,6 +19,13 @@ future callback(future (*fn)(future *), future *input)
 
 future status(future *input);
 
+future *reset(future *result) {
+	result->data = NULL;
+	result->len = 0;
+	result->callback = NULL;
+	return result;
+}
+
 future token(future *input)
 {
 
@@ -27,8 +34,7 @@ future token(future *input)
 	mpack_tree_parse(&tree);
 	mpack_node_t root = mpack_tree_root(&tree);
 
-	future *result = malloc(sizeof(future));
-	result->context = input->context;
+	future *result = reset(input);
 
 	mpack_node_t data = mpack_node_map_cstr_optional(root, "data");
 	if (mpack_node_is_missing(data))
@@ -75,8 +81,7 @@ future authentication(future *input)
 	mpack_tree_parse(&tree);
 	mpack_node_t root = mpack_tree_root(&tree);
 
-	future *result = malloc(sizeof(future));
-	result->context = input->context;
+	future *result = reset(input);
 	mpack_node_t headers = mpack_node_map_cstr_optional(root, "headers");
 	if (mpack_node_is_missing(headers))
 	{
@@ -101,7 +106,6 @@ future authentication(future *input)
 
 	if (strstr(auth, "error="))
 	{
-		result->callback = NULL;
 		mpack_write_cstr(&writer, "complete");
 		mpack_write_bool(&writer, false);
 		mpack_complete_map(&writer);
@@ -156,8 +160,8 @@ future status(future *input)
 	char *digest = extractImage(root);
 
 	mpack_writer_t writer;
-	future result = {NULL, 0, NULL, NULL};
-	mpack_writer_init_growable(&writer, &result.data, &result.len);
+	future *result = reset(input);
+	mpack_writer_init_growable(&writer, &result->data, &result->len);
 	mpack_build_map(&writer);
 	if (digest)
 	{
@@ -174,7 +178,7 @@ future status(future *input)
 	mpack_complete_map(&writer);
 	mpack_writer_destroy(&writer);
 
-	return result;
+	return *result;
 }
 
 future call(char *input, size_t len)
