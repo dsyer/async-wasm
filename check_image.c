@@ -13,7 +13,7 @@ mpack_node_t parse(char *data, size_t len) {
 	return root;
 }
 
-buffer get(buffer (*fn)(buffer *), buffer *input)
+future get(future (*fn)(future *), future *input)
 {
 	mpack_node_t node = parse(input->data, input->len);
 	int ulen = mpack_node_strlen(mpack_node_map_cstr(node, "url"));
@@ -30,7 +30,7 @@ buffer get(buffer (*fn)(buffer *), buffer *input)
 START_TEST(test_call)
 {
 	mpack_writer_t writer;
-	buffer *input = malloc(sizeof(buffer));
+	future *input = malloc(sizeof(future));
 	mpack_writer_init_growable(&writer, &input->data, &input->len);
 	mpack_build_map(&writer);
 	mpack_write_cstr(&writer, "spec");
@@ -55,14 +55,14 @@ END_TEST
 START_TEST(test_manifest_no_digest)
 {
 	mpack_writer_t writer;
-	buffer *input = malloc(sizeof(buffer));
+	future *input = malloc(sizeof(future));
 	mpack_writer_init_growable(&writer, &input->data, &input->len);
 	mpack_build_map(&writer);
 	mpack_write_cstr(&writer, "status");
 	mpack_write_int(&writer, 200);
 	mpack_complete_map(&writer);
 	mpack_writer_destroy(&writer);
-	buffer result = callback(status, input);
+	future result = callback(status, input);
 	mpack_node_t node = parse(result.data, result.len);
 	bool complete = mpack_node_bool(mpack_node_map_cstr(node, "complete"));
 	if (complete)
@@ -76,7 +76,7 @@ END_TEST
 START_TEST(test_manifest)
 {
 	mpack_writer_t writer;
-	buffer *input = malloc(sizeof(buffer));
+	future *input = malloc(sizeof(future));
 	mpack_writer_init_growable(&writer, &input->data, &input->len);
 	mpack_build_map(&writer);
 	mpack_write_cstr(&writer, "status");
@@ -88,7 +88,7 @@ START_TEST(test_manifest)
 	mpack_complete_map(&writer);
 	mpack_complete_map(&writer);
 	mpack_writer_destroy(&writer);
-	buffer result = callback(status, input);
+	future result = callback(status, input);
 	mpack_node_t node = parse(result.data, result.len);
 	int len = mpack_node_strlen(mpack_node_map_cstr(node, "latest_image"));
 	char *buffer = malloc(len + 1);
@@ -110,7 +110,7 @@ END_TEST
 START_TEST(test_digest)
 {
 	mpack_writer_t writer;
-	buffer *input = malloc(sizeof(buffer));
+	future *input = malloc(sizeof(future));
 	mpack_writer_init_growable(&writer, &input->data, &input->len);
 	mpack_build_map(&writer);
 	mpack_write_cstr(&writer, "headers");
@@ -132,7 +132,7 @@ END_TEST
 START_TEST(test_digest_caps)
 {
 	mpack_writer_t writer;
-	buffer *input = malloc(sizeof(buffer));
+	future *input = malloc(sizeof(future));
 	mpack_writer_init_growable(&writer, &input->data, &input->len);
 	mpack_build_map(&writer);
 	mpack_write_cstr(&writer, "headers");
@@ -154,7 +154,7 @@ END_TEST
 START_TEST(test_digest_no_headers)
 {
 	mpack_writer_t writer;
-	buffer *input = malloc(sizeof(buffer));
+	future *input = malloc(sizeof(future));
 	mpack_writer_init_growable(&writer, &input->data, &input->len);
 	mpack_build_map(&writer);
 	mpack_complete_map(&writer);
