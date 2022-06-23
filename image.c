@@ -156,7 +156,7 @@ future status(future *input)
 	char *digest = extractImage(root);
 
 	mpack_writer_t writer;
-	future result = {NULL, 0, NULL};
+	future result = {NULL, 0, NULL, NULL};
 	mpack_writer_init_growable(&writer, &result.data, &result.len);
 	mpack_build_map(&writer);
 	if (digest)

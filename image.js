@@ -3,6 +3,17 @@ import { get as httpget } from 'runtime';
 
 let promises = {};
 
+function extract(offset) {
+	const view = new Uint32Array(memory.buffer, offset, 4);
+	const ptr = view[0];
+	const len = view[1];
+	return {
+		value: ptr ? msgpack.decode(memory.buffer.slice(ptr, ptr + len)) : {},
+		callback: view[2],
+		context: view[3]
+	};
+}
+
 const callback = (output, fn, input, context) => {
 	if (typeof input.data == "string") {
 		input.data = JSON.parse(input.data);
@@ -10,16 +21,16 @@ const callback = (output, fn, input, context) => {
 	var msg = msgpack.encode(input);
 	const top = stackSave();
 	const offset = stackAlloc(msg.length);
-	const args = stackAlloc(4);
+	const args = stackAlloc(32);
 	new Uint8Array(memory.buffer, offset, msg.length).set(msg)
 	new Uint32Array(memory.buffer, args, 4).set([offset, msg.length, 0, context]);
 	wasm.instance.exports.callback(output, fn, args);
-	var result = new Uint32Array(memory.buffer, output, 4);
+	var result = extract(output);
 	var value;
-	if (result[2]) {
+	if (result.callback) {
 		value = promises[output];
 	} else {
-		value = msgpack.decode(memory.buffer.slice(result[0], result[0] + result[1]));
+		value = result.value;
 		delete promises[output];
 	}
 	stackRestore(top);
@@ -27,16 +38,9 @@ const callback = (output, fn, input, context) => {
 }
 
 const get = (output, fn, offset) => {
-	const view = new Uint32Array(memory.buffer, offset, 4);
-	var input = {
-		ptr: view[0],
-		len: view[1],
-		callback: view[2],
-		context: view[3]
-	};
+	var input = extract(offset);
 	new Uint32Array(memory.buffer, output, 4).set([0, 0, fn, input.context]);
-	var msg = msgpack.decode(memory.buffer.slice(input.ptr, input.ptr + input.len));
-	promises[output] = httpget(msg).then(value => callback(output, fn, value, input.context));
+	promises[output] = httpget(input.value).then(value => callback(output, fn, value, input.context));
 }
 
 const file = fs.readFileSync('./image.wasm');
