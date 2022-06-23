@@ -6,7 +6,7 @@ typedef struct
 {
 	char *data;
 	size_t len;
-	void (*callback)(void*);
+	void (*callback)(void *);
 	void *context;
 } future;
 
@@ -43,7 +43,7 @@ future token(future *input)
 	int rlen = mpack_node_strlen(field);
 	char *token = malloc(rlen + 1);
 	mpack_node_copy_cstr(field, token, rlen + 1);
-	char* auth = malloc(rlen + 1 + strlen("Bearer "));
+	char *auth = malloc(rlen + 1 + strlen("Bearer "));
 	merge(auth, "Bearer ", token);
 	free(token);
 
@@ -52,7 +52,7 @@ future token(future *input)
 	mpack_build_map(&writer);
 
 	mpack_write_cstr(&writer, "url");
-	mpack_write_cstr(&writer, (char*)input->context);
+	mpack_write_cstr(&writer, (char *)input->context);
 	mpack_write_cstr(&writer, "headers");
 	mpack_build_map(&writer);
 	mpack_write_cstr(&writer, "authorization");
@@ -99,6 +99,15 @@ future authentication(future *input)
 	mpack_writer_init_growable(&writer, &result->data, &result->len);
 	mpack_build_map(&writer);
 
+	if (strstr(auth, "error="))
+	{
+		result->callback = NULL;
+		mpack_write_cstr(&writer, "complete");
+		mpack_write_bool(&writer, false);
+		mpack_complete_map(&writer);
+		mpack_writer_destroy(&writer);
+		return *result;
+	}
 	mpack_write_cstr(&writer, "url");
 	mpack_write_cstr(&writer, computeTokenUrl(auth));
 
