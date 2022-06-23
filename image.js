@@ -21,7 +21,7 @@ const callback = (output, fn, input, context) => {
 	var msg = msgpack.encode(input);
 	const top = stackSave();
 	const offset = stackAlloc(msg.length);
-	const args = stackAlloc(32);
+	const args = stackAlloc(16);
 	new Uint8Array(memory.buffer, offset, msg.length).set(msg)
 	new Uint32Array(memory.buffer, args, 4).set([offset, msg.length, 0, context]);
 	wasm.instance.exports.callback(output, fn, args);

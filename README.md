@@ -268,7 +268,7 @@ Here it is in action (when there is a registry running on localhost):
 }
 ```
 
-It also works with Dockerhub but currently only because of the extra authentication code in `image.js` (logically that belongs inside the WASM):
+It also works with Dockerhub:
 
 ```javascript
 > await is.call({spec:{image:"nginx"}})
@@ -288,3 +288,39 @@ It also works with Dockerhub but currently only because of the extra authenticat
 > ```
 > 
 > The stack manipulation functions come as standard with `emcc`, but using them does tie us to that toolchain, sadly.
+
+### ABI
+
+The Application Binary Interface (ABI) of the WASM in this example is quite simple. It consists of a data structure, and imported function, and two exports (one of which is just a convenience).
+
+An async `get()` function is imported and implemented in JavaScript as an HTTP GET. The signature in C is:
+```c
+future get(future (*fn)(future *), future *input);
+```
+
+The `future` data structure holds information and context about async callbacks and their results. Here is the definition in C:
+```c
+typedef struct
+{
+    char *data;
+    size_t len;
+    void (*callback)(void *);
+    void *context;
+} future;
+```
+A function that wants to return a concrete JSON can encode it as a MessagePack and set the `data` (plus associated `len`) and return a `future` directly. A function that wants to do something asynchronous can set use the `future` to encode the input argument, call the imported `get()` and return the result. In WASM memory the `future` is just an array of 4 `i32` (total size 16 bytes).
+
+The `call()` function is exported and contains the main "business logic". It is declared as an asynchronous wrapper in JavaScript, allowing the WASM implementation to call out to `get()` and return the result. Its signature is :
+```c
+ future call(char *input, size_t len);
+```
+where the input (and length) are as above a MessagePack encoded JSON. In WASM terms the signature is `(func (param i32 i32 i32))`, where the first parameter is a pointer to the result, and the second and third are the MessagePack binary.
+
+There is also an exported `callback()` convenience function (as above) which does virtual function dispatch. In C:
+```c
+future callback(future (*fn)(future *), future *input)
+{
+    return fn(input);
+}
+```
+In WASM terms the signature is `(func (param i32 i32 i32))`, where the first parameter is a pointer to the result, the second is the virtual function index, and the third is a pointer to the input.
