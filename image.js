@@ -1,5 +1,9 @@
 import * as msgpack from '@msgpack/msgpack';
 import { get as httpget } from 'runtime';
+import { default as WASI } from "wasi";
+
+// Instantiate a new WASI Instance
+let wasi = new WASI({});
 
 let promises = {};
 
@@ -16,7 +20,9 @@ function extract(offset) {
 
 const callback = (output, fn, input, context) => {
 	if (typeof input.data == "string") {
-		input.data = JSON.parse(input.data);
+		try {
+			input.data = JSON.parse(input.data);
+		} catch (err) {}
 	}
 	var msg = msgpack.encode(input);
 	const offset = malloc(msg.length);
@@ -44,19 +50,21 @@ const get = (output, fn, offset) => {
 }
 
 const file = fs.readFileSync('./image.wasm');
-let wasm = await WebAssembly.instantiate(file, { "env": { "get": get, "callback": callback } });
-let { malloc, free, memory } = wasm.instance.exports;
+let wasm = await WebAssembly.instantiate(file, { "env": { "get": get, "callback": callback }, "wasi_snapshot_preview1": wasi.exports });
+let { malloc: _malloc, free: _free } = wasm.instance.exports;
+let { allocate: malloc = _malloc, release: free = _free, memory } = wasm.instance.exports;
+wasi.memory = memory;
 
 export async function call(input) {
 	input ||= {};
 	var msg = msgpack.encode(input);
 	const offset = malloc(msg.length);
 	new Uint8Array(memory.buffer, offset, msg.length).set(msg)
-	var output = malloc(12);
+	var output = malloc(16);
 	wasm.instance.exports.call(output, offset, msg.length);
 	free(offset);
 	free(output);
 	return output && promises[output] || {};
 };
 
-export { wasm };
+export { wasm, wasi };

@@ -324,3 +324,117 @@ future callback(future (*fn)(future *), future *input)
 }
 ```
 In WASM terms the signature is `(func (param i32 i32 i32))`, where the first parameter is a pointer to the result, the second is the virtual function index, and the third is a pointer to the input.
+
+## Memory Management
+
+The `stack*` functions from `emcc` don't show up in code generated other ways, so if we want to be able to use other guest languages we need a better solution for memory management. From C we can simply export `malloc` and `free` from the standard library:
+
+```
+$ emcc -Os -s ERROR_ON_UNDEFINED_SYMBOLS=0 -s EXPORTED_FUNCTIONS="[_call,_callback, _malloc, _free]" -Wl,--no-entry -I include image.c lib/libmpack.a -o image.wasm
+```
+
+and then use it in the JavaScript. Example:
+
+```javascript
+export async function call(input) {
+	input ||= {};
+	var msg = msgpack.encode(input);
+	const offset = malloc(msg.length);
+	new Uint8Array(memory.buffer, offset, msg.length).set(msg)
+	var output = malloc(12);
+	wasm.instance.exports.call(output, offset, msg.length);
+	free(offset);
+	free(output);
+	return output && promises[output] || {};
+};
+```
+
+We can't export `malloc` and `free` from Rust, but we can provide a binary compatible equivalents:
+
+```Rust
+#[no_mangle]
+pub extern "C" fn allocate(size: usize) -> *mut u8 {
+	let v = vec![0u8; size].into_boxed_slice();
+    Box::into_raw(v) as _
+}
+
+#[no_mangle]
+pub extern "C" fn release(ptr: *mut u8) {
+	if !ptr.is_null() {
+        let _ = unsafe { Box::from_raw(ptr) };
+    }
+}
+```
+
+and then map these to JavaScript functions called `malloc` and `free` in the binding module:
+
+```javascript
+let { malloc: _malloc, free: _free } = wasm.instance.exports;
+let { allocate: malloc = _malloc, release: free = _free, memory } = wasm.instance.exports;
+```
+
+## Compiling from Rust
+
+Apart from the "malloc" and "free" shims above, the rest of the features in Rust consists of 
+
+* a struct definition for the "future":
+    ```Rust
+    #[repr(C)]
+    pub struct Future {
+    	data: *mut u8,
+    	len: usize,
+    	callback: u32,
+    	context: u32
+    }
+    ```
+* an imported `get()` function:
+    ```Rust
+    extern "C" {
+    	pub fn get(callback: fn(&Future) -> Future, input: Future) -> Future;
+    }
+    ```
+* the `callback` dispatcher:
+    ```Rust
+    #[no_mangle]
+    pub extern "C" fn callback(callback: fn(&Future) -> Future, input: &Future) -> Future {
+    	return callback(input);
+    }
+    ```
+* and the `call()` entry point:
+    ```Rust
+    pub extern "C" fn call(input: *mut u8, len: usize) -> Future {
+    	let input = Future {
+    		data: input,
+    		len: len,
+    		callback: 0,
+    		context: 0
+    	};
+    	// business logic to extract stuff from input ...
+    	unsafe {
+    		return get(status, input);
+    	}
+    }
+    ```
+
+To compile we need to use the "wasm32-wasi" target type ("wasm-unknown-unknown" ought to be sufficient but it generates WASM functions with the wrong signatures). We can also do a short round of optimization:
+
+```
+$ cargo build --target=wasm32-wasi
+$ wasm-opt -Os target/wasm32-wasi/debug/image.wasm -o image.wasm
+```
+
+At this** point the `image.wasm` is ready to run, but the "wasm32-wasi" target type has caused the WASM to be generated with additional WASI imports (that we don't need, but can't seem to optimize away). So we need an implementation of those. [This](https://github.com/devsnek/node-wasi) works:
+
+```
+$ npm install --save wasi
+```
+
+with
+
+```javascript
+import { default as WASI } from "wasi";
+
+let wasi = new WASI({});
+let wasm = await WebAssembly.instantiate(file, { "env": { "get": get, "callback": callback }, "wasi_snapshot_preview1": wasi.exports });
+wasi.memory = wasm.instance.exports.memory;
+```

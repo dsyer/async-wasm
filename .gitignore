@@ -1,8 +1,10 @@
 .vscode/
 package-lock.json
 node_modules/
+target/
 tmp/
 test
+Cargo.lock
 
 lib/
 include/

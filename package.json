@@ -2,6 +2,7 @@
 	"type": "module",
 	"dependencies": {
 		"@msgpack/msgpack": "^2.7.2",
-		"runtime": "file:./runtime"
+		"runtime": "file:./runtime",
+		"wasi": "^0.0.6"
 	}
 }
