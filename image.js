@@ -19,8 +19,8 @@ const callback = (output, fn, input, context) => {
 		input.data = JSON.parse(input.data);
 	}
 	var msg = msgpack.encode(input);
-	const offset = allocate(msg.length);
-	const args = allocate(16);
+	const offset = malloc(msg.length);
+	const args = malloc(16);
 	new Uint8Array(memory.buffer, offset, msg.length).set(msg)
 	new Uint32Array(memory.buffer, args, 4).set([offset, msg.length, 0, context]);
 	wasm.instance.exports.callback(output, fn, args);
@@ -32,8 +32,8 @@ const callback = (output, fn, input, context) => {
 		value = result.value;
 		delete promises[output];
 	}
-	release(offset);
-	release(args);
+	free(offset);
+	free(args);
 	return value;
 }
 
@@ -45,17 +45,17 @@ const get = (output, fn, offset) => {
 
 const file = fs.readFileSync('./image.wasm');
 let wasm = await WebAssembly.instantiate(file, { "env": { "get": get, "callback": callback } });
-let { allocate, release, memory } = wasm.instance.exports;
+let { malloc, free, memory } = wasm.instance.exports;
 
 export async function call(input) {
 	input ||= {};
 	var msg = msgpack.encode(input);
-	const offset = allocate(msg.length);
+	const offset = malloc(msg.length);
 	new Uint8Array(memory.buffer, offset, msg.length).set(msg)
-	var output = allocate(12);
+	var output = malloc(12);
 	wasm.instance.exports.call(output, offset, msg.length);
-	release(offset);
-	release(output);
+	free(offset);
+	free(output);
 	return output && promises[output] || {};
 };
 

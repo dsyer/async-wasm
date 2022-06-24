@@ -7,14 +7,6 @@ typedef struct
 	int value;
 } Result;
 
-void *allocate(size_t size){
-	return malloc(size);
-}
-
-void release(void *ptr){
-	free(ptr);
-}
-
 Result get(Result (*result)(int), int input);
 
 Result callback(Result (*callback)(int), int input)
