@@ -19,9 +19,8 @@ const callback = (output, fn, input, context) => {
 		input.data = JSON.parse(input.data);
 	}
 	var msg = msgpack.encode(input);
-	const top = stackSave();
-	const offset = stackAlloc(msg.length);
-	const args = stackAlloc(16);
+	const offset = allocate(msg.length);
+	const args = allocate(16);
 	new Uint8Array(memory.buffer, offset, msg.length).set(msg)
 	new Uint32Array(memory.buffer, args, 4).set([offset, msg.length, 0, context]);
 	wasm.instance.exports.callback(output, fn, args);
@@ -33,7 +32,8 @@ const callback = (output, fn, input, context) => {
 		value = result.value;
 		delete promises[output];
 	}
-	stackRestore(top);
+	release(offset);
+	release(args);
 	return value;
 }
 
@@ -45,17 +45,17 @@ const get = (output, fn, offset) => {
 
 const file = fs.readFileSync('./image.wasm');
 let wasm = await WebAssembly.instantiate(file, { "env": { "get": get, "callback": callback } });
-let { stackSave, stackAlloc, stackRestore, memory } = wasm.instance.exports;
+let { allocate, release, memory } = wasm.instance.exports;
 
 export async function call(input) {
 	input ||= {};
 	var msg = msgpack.encode(input);
-	const top = stackSave();
-	const offset = stackAlloc(msg.length);
+	const offset = allocate(msg.length);
 	new Uint8Array(memory.buffer, offset, msg.length).set(msg)
-	var output = stackAlloc(12);
+	var output = allocate(12);
 	wasm.instance.exports.call(output, offset, msg.length);
-	stackRestore(top);
+	release(offset);
+	release(output);
 	return output && promises[output] || {};
 };
 

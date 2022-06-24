@@ -10,6 +10,14 @@ typedef struct
 	void *context;
 } future;
 
+void *allocate(size_t size){
+	return malloc(size);
+}
+
+void release(void *ptr){
+	free(ptr);
+}
+
 future get(future (*fn)(future *), future *input);
 
 future callback(future (*fn)(future *), future *input)

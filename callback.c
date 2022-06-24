@@ -1,4 +1,4 @@
-#include <stdio.h>
+#include <stdlib.h>
 #include <stdbool.h>
 
 typedef struct
@@ -6,6 +6,14 @@ typedef struct
 	void (*callback)(int);
 	int value;
 } Result;
+
+void *allocate(size_t size){
+	return malloc(size);
+}
+
+void release(void *ptr){
+	free(ptr);
+}
 
 Result get(Result (*result)(int), int input);
 

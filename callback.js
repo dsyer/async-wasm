@@ -33,14 +33,13 @@ const get = (output, fn, input) => {
 
 const file = fs.readFileSync('./callback.wasm');
 let wasm = await WebAssembly.instantiate(file, { "env": { "get": get, "callback": callback } });
-let { stackSave, stackAlloc, stackRestore, memory } = wasm.instance.exports;
+let { allocate, release, memory } = wasm.instance.exports;
 
 export async function call(input) {
 	input ||= 0;
-	const top = stackSave();
-	const output = stackAlloc(8);
+	const output = allocate(8);
 	wasm.instance.exports.call(output, input);
-	stackRestore(top);
+	release(output);
 	return promises[output].promise;
 };
 
