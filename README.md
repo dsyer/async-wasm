@@ -306,9 +306,11 @@ typedef struct
     size_t len;
     void (*callback)(void *);
     void *context;
+    size_t context_len;
+    void *index;
 } future;
 ```
-A function that wants to return a concrete JSON can encode it as a MessagePack and set the `data` (plus associated `len`) and return a `future` directly. A function that wants to do something asynchronous can set use the `future` to encode the input argument, call the imported `get()` and return the result. In WASM memory the `future` is just an array of 4 `i32` (total size 16 bytes).
+A function that wants to return a concrete JSON can encode it as a MessagePack and set the `data` (plus associated `len`) and return a `future` directly. A function that wants to do something asynchronous can set use the `future` to encode the input argument, call the imported `get()` and return the result. In WASM memory the `future` is just an array of 6 `i32` (total size 24 bytes).
 
 The `call()` function is exported and contains the main "business logic". It is declared as an asynchronous wrapper in JavaScript, allowing the WASM implementation to call out to `get()` and return the result. Its signature is :
 ```c
@@ -341,11 +343,12 @@ export async function call(input) {
 	var msg = msgpack.encode(input);
 	const offset = malloc(msg.length);
 	new Uint8Array(memory.buffer, offset, msg.length).set(msg)
-	var output = malloc(12);
+	var output = malloc(24);
 	wasm.instance.exports.call(output, offset, msg.length);
+	var result = extract(output);
 	free(offset);
 	free(output);
-	return output && promises[output] || {};
+	return result.index && promises[result.index] || {};
 };
 ```
 
@@ -384,7 +387,9 @@ Apart from the "malloc" and "free" shims above, the rest of the features in Rust
     	data: *mut u8,
     	len: usize,
     	callback: u32,
-    	context: u32
+    	context: u32,
+		context_len: usize,
+		index: u32
     }
     ```
 * an imported `get()` function:
@@ -407,7 +412,9 @@ Apart from the "malloc" and "free" shims above, the rest of the features in Rust
     		data: input,
     		len: len,
     		callback: 0,
-    		context: 0
+    		context: 0,
+			context_len: 0,
+			index: 0
     	};
     	// business logic to extract stuff from input ...
     	unsafe {

@@ -8,6 +8,8 @@ typedef struct
 	size_t len;
 	void (*callback)(void *);
 	void *context;
+	size_t clen;
+	void *index;
 } future;
 
 future get(future (*fn)(future *), future *input);
@@ -23,6 +25,7 @@ future *reset(future *result) {
 	result->data = NULL;
 	result->len = 0;
 	result->callback = NULL;
+	result->clen = 0;
 	return result;
 }
 
