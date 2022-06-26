@@ -387,7 +387,7 @@ Apart from the "malloc" and "free" shims above, the rest of the features in Rust
     	data: *mut u8,
     	len: usize,
     	callback: u32,
-    	context: u32,
+    	context: *mut u8,
 		context_len: usize,
 		index: u32
     }
@@ -412,7 +412,7 @@ Apart from the "malloc" and "free" shims above, the rest of the features in Rust
     		data: input,
     		len: len,
     		callback: 0,
-    		context: 0,
+    		context:  vec![0; 0].as_mut_ptr(),
 			context_len: 0,
 			index: 0
     	};
@@ -423,14 +423,18 @@ Apart from the "malloc" and "free" shims above, the rest of the features in Rust
     }
     ```
 
-To compile we need to use the "wasm32-wasi" target type ("wasm-unknown-unknown" ought to be sufficient but it generates WASM functions with the wrong signatures). We can also do a short round of optimization:
+To compile we can to use the "wasm32-unkown-unknown" target type. We can also do a short round of optimization:
 
 ```
-$ cargo build --target=wasm32-wasi
-$ wasm-opt -Os target/wasm32-wasi/debug/image.wasm -o image.wasm
+$ cargo build --target=wasm32-unknown-unknown
+$ wasm-opt -Os target/wasm32-unknown-unknown/debug/image.wasm -o image.wasm
 ```
 
-At this** point the `image.wasm` is ready to run, but the "wasm32-wasi" target type has caused the WASM to be generated with additional WASI imports (that we don't need, but can't seem to optimize away). So we need an implementation of those. [This](https://github.com/devsnek/node-wasi) works:
+At this point the `image.wasm` is ready to run.
+
+## WASI
+
+If we used the "wasm32-wasi" target type instead of "wasm32-unkown-unknown", then it causes the WASM to be generated with additional WASI imports (that we don't yet need, but can't seem to optimize away). So we need an implementation of those. [This](https://github.com/devsnek/node-wasi) works:
 
 ```
 $ npm install --save wasi
@@ -445,3 +449,5 @@ let wasi = new WASI({});
 let wasm = await WebAssembly.instantiate(file, { "env": { "get": get, "callback": callback }, "wasi_snapshot_preview1": wasi.exports });
 wasi.memory = wasm.instance.exports.memory;
 ```
+
+but that "wasi" library is old and unmaintained, so it seems that WASI bindings for JavaScript are a bit of a blind spot. No-one expects you to need them?
