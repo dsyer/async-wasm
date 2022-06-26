@@ -310,7 +310,7 @@ typedef struct
     void *index;
 } future;
 ```
-A function that wants to return a concrete JSON can encode it as a MessagePack and set the `data` (plus associated `len`) and return a `future` directly. A function that wants to do something asynchronous can set use the `future` to encode the input argument, call the imported `get()` and return the result. In WASM memory the `future` is just an array of 6 `i32` (total size 24 bytes).
+A function that wants to return a concrete JSON can encode it as a MessagePack and set the `data` (plus associated `len`) and return a `future` directly. A function that wants to do something asynchronous can set use the `future` to encode the input argument, call the imported `get()` and return the result. In WASM memory the `future` is just an array of 6 `i32` (total size 24 bytes). The `index` field is used to pass a map key from the host `get()` to the host `callback()` - the guest code (WASM) doesn't need to and shouldn't use it. In contrast, the `context` pointer (and associated length) is for the guest to use as necessary, and it is the guest's responsibility to copy it across if it creates a new future instance. In the "image" sample here it is used to store the original URL for the repository metadata query, so it can be reused when the authentication is complete for a secure registry (like Dockerhub).
 
 The `call()` function is exported and contains the main "business logic". It is declared as an asynchronous wrapper in JavaScript, allowing the WASM implementation to call out to `get()` and return the result. Its signature is :
 ```c
