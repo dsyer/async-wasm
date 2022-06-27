@@ -22,7 +22,6 @@ const callback = (output, fn, input, context) => {
 		} catch (err) {}
 	}
 	var msg = msgpack.encode(input);
-	console.log("callback:", input, context)
 	const offset = malloc(msg.length);
 	const args = malloc(24);
 	new Uint8Array(memory.buffer, offset, msg.length).set(msg)
@@ -38,13 +37,11 @@ const callback = (output, fn, input, context) => {
 	}
 	free(offset);
 	free(args);
-	console.log("result:", value)
 	return value;
 }
 
 const get = (output, fn, offset) => {
 	var input = extract(offset);
-	console.log("get:", input);
 	new Uint32Array(memory.buffer, output, 6).set([0, 0, fn, input.context.data, input.context.len, output]);
 	promises[output] = httpget(input.value).then(value => callback(output, fn, value, input.context));
 }

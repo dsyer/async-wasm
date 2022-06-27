@@ -1,4 +1,4 @@
-use std::{slice, mem::ManuallyDrop};
+use std::{slice};
 
 use rmpv::{decode, encode, Utf8String, Value};
 
@@ -69,7 +69,7 @@ fn token(input: &Future) -> Future {
         Value::Map(vec![(
             Value::String(Utf8String::from("authorization")),
             Value::String(Utf8String::from(auth)),
-        )])
+        )]),
     ));
     encode::write_value(&mut request, &Value::Map(value)).ok();
     result.data = request.as_mut_ptr();
@@ -81,11 +81,11 @@ fn token(input: &Future) -> Future {
 }
 
 fn get_string_context(input: &Future) -> String {
-	unsafe { 
-		// let bytes = std::ptr::from_raw_parts::<Bytes>(input.context, ());
-		// return String::from_raw_parts(input.context, input.clen, input.clen);
-	}
-	return "https://index.docker.io/v2/library/nginx/manifests/latest".to_string();
+    let mut result = vec![0u8; input.len];
+    unsafe {
+        std::ptr::copy(input.context, result.as_mut_ptr(), input.clen);
+    }
+    return String::from_utf8(result).ok().unwrap();
 }
 
 fn authentication(input: &Future) -> Future {
@@ -111,10 +111,6 @@ fn authentication(input: &Future) -> Future {
         value.push((
             Value::String(Utf8String::from("complete")),
             Value::Boolean(false),
-        ));
-        value.push((
-            Value::String(Utf8String::from("fields")),
-            Value::String(Utf8String::from(fields)),
         ));
         encode::write_value(&mut request, &Value::Map(value)).ok();
         result.data = request.as_mut_ptr();
@@ -239,16 +235,14 @@ pub extern "C" fn call(input: *mut u8, len: usize) -> Future {
                 )]),
             )
             .ok();
-			let mut copy = url.clone().into_bytes();
-			unsafe {
-				copy.set_len(copy.len());
-			}
-			
+            let data = allocate(url.len());
+            let sliced = unsafe { slice::from_raw_parts_mut(data, url.len()) };
+            sliced[..].copy_from_slice(url.as_bytes());
             let input = Future {
                 data: request.as_mut_ptr(),
                 len: request.len(),
                 callback: 0,
-                context: copy.as_mut_ptr(),
+                context: data,
                 clen: url.len(),
                 index: 0,
             };

@@ -413,8 +413,8 @@ Apart from the "malloc" and "free" shims above, the rest of the features in Rust
     		len: len,
     		callback: 0,
     		context:  vec![0; 0].as_mut_ptr(),
-			context_len: 0,
-			index: 0
+    		context_len: 0,
+    		index: 0
     	};
     	// business logic to extract stuff from input ...
     	unsafe {
@@ -423,7 +423,7 @@ Apart from the "malloc" and "free" shims above, the rest of the features in Rust
     }
     ```
 
-To compile we can to use the "wasm32-unkown-unknown" target type. We can also do a short round of optimization:
+To compile we can use the "wasm32-unkown-unknown" target type. A short round of optimization is also possible:
 
 ```
 $ cargo build --target=wasm32-unknown-unknown
