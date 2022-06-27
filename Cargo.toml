@@ -8,3 +8,4 @@ crate-type = ["cdylib", "rlib"]
 
 [dependencies]
 rmp = "^0.8"
+rmpv = "1.0.0"
