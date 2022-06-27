@@ -25,7 +25,6 @@ future *reset(future *result) {
 	result->data = NULL;
 	result->len = 0;
 	result->callback = NULL;
-	result->clen = 0;
 	return result;
 }
 
