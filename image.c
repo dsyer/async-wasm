@@ -169,7 +169,7 @@ future status(future *input)
 	{
 		mpack_write_cstr(&writer, "complete");
 		mpack_write_bool(&writer, true);
-		mpack_write_cstr(&writer, "latest_image");
+		mpack_write_cstr(&writer, "latestImage");
 		mpack_write_cstr(&writer, digest);
 	}
 	else

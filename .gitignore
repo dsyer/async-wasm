@@ -2,6 +2,7 @@
 package-lock.json
 node_modules/
 target/
+build/
 tmp/
 test
 Cargo.lock

@@ -1,3 +1,5 @@
+import fs from "fs";
+import path from "path";
 import * as msgpack from '@msgpack/msgpack';
 import { get as httpget } from 'runtime';
 
@@ -46,7 +48,7 @@ const get = (output, fn, offset) => {
 	promises[output] = httpget(input.value).then(value => callback(output, fn, value, input.context));
 }
 
-const file = fs.readFileSync('./image.wasm');
+const file = fs.readFileSync(path.dirname(import.meta.url).replace("file://", "") + '/image.wasm');
 let wasm = await WebAssembly.instantiate(file, { "env": { "get": get, "callback": callback }});
 let { malloc: _malloc, free: _free } = wasm.instance.exports;
 let { allocate: malloc = _malloc, release: free = _free, memory } = wasm.instance.exports;

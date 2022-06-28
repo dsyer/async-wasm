@@ -149,7 +149,7 @@ fn status(input: &Future) -> Future {
                 Value::Boolean(true),
             ));
             value.push((
-                Value::String(Utf8String::from("latest_image")),
+                Value::String(Utf8String::from("latestImage")),
                 Value::String(Utf8String::from(image)),
             ));
         }

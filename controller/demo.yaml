@@ -1,0 +1,6 @@
+apiVersion: example.com/v1
+kind: Image
+metadata:
+  name: demo
+spec:
+  image: localhost:5000/apps/demo

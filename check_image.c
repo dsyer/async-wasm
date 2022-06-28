@@ -90,9 +90,9 @@ START_TEST(test_manifest)
 	mpack_writer_destroy(&writer);
 	future result = callback(status, input);
 	mpack_node_t node = parse(result.data, result.len);
-	int len = mpack_node_strlen(mpack_node_map_cstr(node, "latest_image"));
+	int len = mpack_node_strlen(mpack_node_map_cstr(node, "latestImage"));
 	char *buffer = malloc(len + 1);
-	mpack_node_copy_cstr(mpack_node_map_cstr(node, "latest_image"), buffer, len + 1);
+	mpack_node_copy_cstr(mpack_node_map_cstr(node, "latestImage"), buffer, len + 1);
 	printf("{image: \"%s\"}\n", buffer);
 	if (len == 0)
 	{
@@ -191,8 +191,8 @@ Suite *suite(void)
 
 /*
  * $ mkdir -p native
- * $ (cd ../wasm-mpack; make clean; make)
- * $ cp -rf build/release/* native
+ * $ (cd ../mpack-wasm; make clean; make)
+ * $ cp -rf ../mpack-wasm/build/release/* native
  * $ gcc -o test -l check -I native/include/ check_image.c -L native/lib/ -l mpack
  * $ ./test
  * Running suite(s): Messages
