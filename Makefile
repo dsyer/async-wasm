@@ -53,12 +53,18 @@ $(target)/$(wasm): $(src) Cargo.toml
 	wasm-opt -Os $(target)/$(platform)/debug/image.wasm -o $(target)/$(wasm)
 	cp $(target)/$(wasm) $(wasm)
 
+$(build)/debug.wasm: assembly/index.ts
+	npm run asbuild
+	wasm-opt -Os $(build)/debug.wasm --enable-bulk-memory -o $(wasm)
+
 lib/libmpack.a:
 	curl -L https://github.com/dsyer/mpack-wasm/releases/download/v1.1-0.0.1/mpack-wasm.tgz | tar -xzf -
 
 rust: $(target)/$(wasm)
 
 c: $(build)/$(wasm)
+
+as: $(build)/debug.wasm
 
 clean:
 	rm -rf $(target) $(build) $(wasm)
