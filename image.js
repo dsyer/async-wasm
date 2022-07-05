@@ -49,7 +49,7 @@ const get = (output, fn, offset) => {
 }
 
 const file = fs.readFileSync(path.dirname(import.meta.url).replace("file://", "") + '/image.wasm');
-let wasm = await WebAssembly.instantiate(file, { "env": { "get": get, "callback": callback }});
+let wasm = await WebAssembly.instantiate(file, { "env": { "get": get, "callback": callback, "abort": () => {console.log("Aborted")} }});
 let { malloc: _malloc, free: _free } = wasm.instance.exports;
 let { allocate: malloc = _malloc, release: free = _free, memory } = wasm.instance.exports;
 
