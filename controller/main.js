@@ -78,10 +78,13 @@ function scheduleReconcile(obj) {
 async function reconcileNow(obj) {
 	reconcileScheduled = false;
 	const image = new V1Image(obj);
-	log(`Reconciling ${image.metadata.name}`);
+	log(`Reconciling "${image.metadata.name}"`);
 	var status = await call(image);
-	image.status = status;
-	await k8sApiImage.replaceNamespacedCustomObjectStatus(CUSTOMRESOURCE_GROUP, CUSTOMRESOURCE_VERSION, image.metadata.namespace, CUSTOMRESOURCE_PLURAL, image.metadata.name, image);
+	if (status) {
+		log(`Status for "${image.metadata.name}" complete: ${status.complete}`)
+		image.status = status;
+		await k8sApiImage.replaceNamespacedCustomObjectStatus(CUSTOMRESOURCE_GROUP, CUSTOMRESOURCE_VERSION, image.metadata.namespace, CUSTOMRESOURCE_PLURAL, image.metadata.name, image);
+	}
 }
 
 async function main() {
@@ -93,7 +96,7 @@ function log(message) {
 }
 
 process.on("unhandledRejection", (reason, p) => {
-	console.log("Unhandled Rejection at: Promise", p, "reason:", reason);
+	console.log("Unhandled Rejection, reason:", reason.message);
 });
 
 main();
