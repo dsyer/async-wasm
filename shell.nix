@@ -4,15 +4,11 @@ mkShell {
 
   name = "env";
   buildInputs = [
-    rustup rustc cargo figlet emscripten nodejs cmake check libmpack wasmtime wabt binaryen
+    rustup rustc cargo figlet nodejs cmake check libmpack wasmtime wabt binaryen
   ];
 
   RUSTC_VERSION = "nightly";
   shellHook = ''
-    mkdir -p ~/.emscripten
-    chmod +w -R ~/.emscripten
-    cp -rf ${emscripten}/share/emscripten/cache ~/.emscripten
-    export EM_CACHE=~/.emscripten/cache
     export TMP=/tmp
     export TMPDIR=/tmp
     RUSTUP_HOME=~/.rustup
