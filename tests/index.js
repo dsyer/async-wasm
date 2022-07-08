@@ -2,8 +2,10 @@ import assert from "assert";
 
 import { call } from "../image.js";
 
-var result = await call({ url: "https://google.com" });
-assert.strictEqual(result.status, 301);
+async function google() {
+    var result = await call({ url: "https://google.com" });
+    assert.strictEqual(result.status, 301);
+}
 
 async function localhost() {
     console.log("end to end localhost");
@@ -21,6 +23,7 @@ async function dockerhub() {
     assert.ok(result.latestImage);
 }
 
+google();
 // await localhost();
 // await dockerhub();
 

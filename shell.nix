@@ -1,4 +1,6 @@
-with import <nixpkgs> { };
+# nix-channel --add https://nixos.org/channels/nixos-21.11
+# nix-channel --update
+with import <nixos-21.11> { };
 
 mkShell {
 

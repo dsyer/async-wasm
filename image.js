@@ -23,6 +23,7 @@ const callback = (output, fn, input, context) => {
 			input.data = JSON.parse(input.data);
 		} catch (err) {}
 	}
+	console.log("callback", input);
 	var msg = msgpack.encode(input);
 	const offset = malloc(msg.length);
 	const args = malloc(24);
@@ -30,6 +31,7 @@ const callback = (output, fn, input, context) => {
 	new Uint32Array(memory.buffer, args, 6).set([offset, msg.length, 0, context.data, context.len, output]);
 	wasm.instance.exports.callback(output, fn, args);
 	var result = extract(output);
+	console.log("callback", result);
 	var value;
 	if (result.callback && result.index) {
 		value = promises[result.index];
@@ -44,8 +46,10 @@ const callback = (output, fn, input, context) => {
 
 const get = (output, fn, offset) => {
 	var input = extract(offset);
+	console.log("get", input);
 	new Uint32Array(memory.buffer, output, 6).set([0, 0, fn, input.context.data, input.context.len, output]);
 	promises[output] = httpget(input.value).then(value => callback(output, fn, value, input.context));
+	console.log(promises);
 }
 
 const file = fs.readFileSync(path.dirname(import.meta.url).replace("file://", "") + '/image.wasm');
@@ -54,7 +58,7 @@ let { malloc: _malloc, free: _free } = wasm.instance.exports;
 let { allocate: malloc = _malloc, release: free = _free, memory } = wasm.instance.exports;
 
 export async function call(input) {
-	input ||= {};
+	input = input || {};
 	var msg = msgpack.encode(input);
 	const offset = malloc(msg.length);
 	new Uint8Array(memory.buffer, offset, msg.length).set(msg)
