@@ -13,6 +13,11 @@ class Future {
   index: usize;
 }
 
+class Status {
+  complete: bool;
+  latestImage: string | null;
+}
+
 class Request {
   url: string | null;
   headers: Map<string, string> | null;
@@ -24,7 +29,9 @@ class Response {
 }
 
 export function malloc(size: usize): usize {
-  return heap.alloc(size);
+  const result = heap.alloc(size);
+  memory.fill(result, size as u8, 0);
+  return result;
 }
 
 export function free(ptr: usize) : void {
@@ -54,6 +61,12 @@ export function call(output: Future, data: i32, len: i32): void {
   input.data = data;
   input.len = len;
   var request: Request = unpack(input, extractImageRequest);
+  if (!request.url) {
+    var result = new Status();
+    result.complete = false;
+    pack(output, result, encodeStatus);
+    return;
+  }
   pack(input, request, encodeRequest);
   storeUrl(input, request.url!);
   get(output, status.index, input);
@@ -71,6 +84,9 @@ function storeUrl(output: Future, url: string) : void {
 
 function extractResponse(decoder: msgpack.Decoder) : Response {
   var msg = new Response();
+  if (decoder.isNextNil()) {
+    return msg;
+  }
   const len = decoder.readMapSize();
   for (var index : u32 = 0; index < len; index++) {
     var key = decoder.readString();
@@ -78,15 +94,17 @@ function extractResponse(decoder: msgpack.Decoder) : Response {
       msg.status = decoder.readInt32();
     } else if (key == "headers") {
       msg.headers = new Map<string, string>();
-      const size = decoder.readMapSize();
-      for (var i : u32 = 0; i<size; i++) {
-        var header = decoder.readString();
-        // TODO: set-cookie is an array
-        if (header !== "set-cookie") {
-          var value = decoder.readString();
-          msg.headers!.set(header, value);
-        } else {
-          decoder .skip();
+      if (!decoder.isNextNil()) {
+        const size = decoder.readMapSize();
+        for (var i : u32 = 0; i<size; i++) {
+          var header = decoder.readString();
+          // TODO: set-cookie is an array
+          if (header !== "set-cookie") {
+            var value = decoder.readString();
+            msg.headers!.set(header, value);
+          } else {
+            decoder .skip();
+          }
         }
       }
     } else {
@@ -127,6 +145,17 @@ function unpack<T>(input: Future, decode: (decoder: msgpack.Decoder) => T): T {
   }
   var decoder = new msgpack.Decoder(bytes.buffer);
   return decode(decoder);
+}
+
+function encodeStatus(value: Status, writer: msgpack.Writer) : void {
+  const len = value.latestImage!==null ? 2 : 1;
+  writer.writeMapSize(len);
+  writer.writeString("complete");
+  writer.writeBool(value.complete);
+  if (value.latestImage!==null) {
+    writer.writeString("latestImage");
+    writer.writeString(value.latestImage!);
+  }
 }
 
 function encodeRequest(value: Request, writer: msgpack.Writer) : void {
