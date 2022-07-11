@@ -41,8 +41,8 @@ $(build)/$(wasm): image.o lib/libmpack.a
 		$(build)/image.o lib/libmpack.a
 	wasm-opt --enable-bulk-memory -Os $(build)/$(wasm) -o $(wasm)
 
-test: image.wasm Makefile
-	npm test
+test:
+	npm test | tee $(build)/test.log
 
 $(WASI_SDK_PATH): 
 	mkdir -p tmp
@@ -55,7 +55,7 @@ $(target)/$(wasm): $(src) Cargo.toml
 
 $(build)/debug.wasm: assembly/index.ts
 	npm run asbuild
-	wasm-opt -Os $(build)/debug.wasm --enable-bulk-memory -o $(wasm)
+	wasm-opt -Os $(build)/debug.wasm --enable-sign-ext --enable-bulk-memory -o $(wasm)
 
 lib/libmpack.a:
 	curl -L https://github.com/dsyer/mpack-wasm/releases/download/v1.1-0.0.1/mpack-wasm.tgz | tar -xzf -

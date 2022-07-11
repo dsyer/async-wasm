@@ -3,7 +3,7 @@ import assert from "assert";
 import { call } from "../image.js";
 
 async function google() {
-    var result = await call({ url: "https://google.com" });
+    var result = await call({ spec: { image: "https://google.com" }});
     assert.strictEqual(result.status, 301);
 }
 

@@ -98,11 +98,25 @@ function extractResponse(decoder: msgpack.Decoder) : Response {
 
 function extractImageRequest(decoder: msgpack.Decoder) : Request {
   var msg = new Request();
-  decoder.readMapSize();
-  // TODO: url needs to be computed from image.spec
-  decoder.readString();
-  var value = decoder.readString();  
-  msg.url = value;
+  var size = decoder.readMapSize();
+  for (var i: u32 = 0; i<size; i++) {
+    var key = decoder.readString();
+    if (key == "spec") {
+      var spec_size = decoder.readMapSize();
+      for (var j: u32 = 0; j<spec_size; j++) {
+        key = decoder.readString();
+        if (key == "image") {
+          var value = decoder.readString();  
+          msg.url = value;
+          return msg;
+        } else {
+          decoder.skip();
+        }
+      }
+    } else {
+      decoder.skip();
+    }
+  }
   return msg;
 }
 
