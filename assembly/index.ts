@@ -46,10 +46,20 @@ function reset(input: Future) : void {
 }
 
 function status(output: Future, input: Future): void {
-  // TODO: process response
   reset(output);
   var response: Response = unpack(input, extractResponse);
-  pack(output, response, encodeResponse);
+  var result = new Status();
+  if (response.headers) {
+    var digest = response.headers!.get("docker-content-digest");
+    if (!digest) {
+      digest = response.headers!.get("Docker-Content-Digest");
+    }
+    if (digest) {
+      result.complete = true;
+      result.latestImage = digest;
+    }
+  }
+  pack(output, result, encodeStatus);
 }
 
 export function callback(output: Future, fn: i32, input: Future): void {
@@ -114,6 +124,24 @@ function extractResponse(decoder: msgpack.Decoder) : Response {
   return msg;
 }
 
+function computeManifestUrl(path: string): string {
+  const label = "latest"; // TODO: compute from path
+  var protocol = "https://";
+  if (!path.includes("/")) {
+    path = "library/" + path;
+  }
+  if (!path.includes(".") && !path.includes(":"))
+  {
+    // No host
+    path = "index.docker.io/" + path;
+  }
+  path = path.replace("/", "/v2/");
+  if (path.startsWith("localhost")) {
+    protocol = "http://"
+  }
+  return protocol + path + "/manifests/" + label;
+}
+
 function extractImageRequest(decoder: msgpack.Decoder) : Request {
   var msg = new Request();
   var size = decoder.readMapSize();
@@ -125,7 +153,7 @@ function extractImageRequest(decoder: msgpack.Decoder) : Request {
         key = decoder.readString();
         if (key == "image") {
           var value = decoder.readString();  
-          msg.url = value;
+          msg.url = computeManifestUrl(value);
           return msg;
         } else {
           decoder.skip();

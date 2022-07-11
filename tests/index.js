@@ -30,8 +30,8 @@ async function dockerhub() {
 }
 
 await noimage();
-await google();
-// await localhost();
+// await google();
+await localhost();
 // await dockerhub();
 
 console.log("ok");
