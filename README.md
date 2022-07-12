@@ -451,3 +451,70 @@ wasi.memory = wasm.instance.exports.memory;
 ```
 
 but that "wasi" library is old and unmaintained, so it seems that WASI bindings for JavaScript are a bit of a blind spot. No-one expects you to need them?
+
+## AssemblyScript
+
+We can use [AssemblyScript](https://www.assemblyscript.org/) to implement the WASM code as well. If you are not trying to build a re-usable WASM you get a lot of help from the generated JavaScript wrapper because, for instance, it has first class support for passing JSON and Strings and stuff in and out of the WASM. But it is opaque and unique (as in a snowflake) so the WASM wouldn't be binary compatible with our other samples. To solve that problem we need to write additional code to schlepp data in and out of the shared memory manually. There also isn't an "official" MessagePack library for AssemblyScript, so the [best option](https://github.com/wapc/as-msgpack) is kind of poorly supported, but at least it exists.
+
+The good news is that once the memory-schlepping code is done you can start to see patterns, and the actual "business logic" is very comfortable because AssemblyScript is basically TypeScript.
+
+### Binary Compatibility
+
+The basic data structure, mathching the one we defined in C, is
+
+```typescript
+@unmanaged
+class Future {
+  data: usize;
+  len: usize;
+  callback: i32;
+  context: usize;
+  clen: usize;
+  index: usize;
+}
+```
+
+The main entry point is
+
+```typescript
+export function call(output: Future, data: i32, len: i32): void {
+	...
+}
+```
+
+N.B. the output struct is passed in as a function parameter - if you try it the other way like we did in Rust then AssemblyScript generates the wrong signature for the WASM function.
+
+The imported `get()` has the same feature (an output parameter):
+
+```typescript
+@external("env", "get")
+declare function get(output: Future, callback: i32, input: Future): void
+```
+
+which has to be called with an integer for the callback (middle) argument. AssemblyScript provides a `.index` reference on the functions, so it is called like this:
+
+```typescript
+  get(output, status.index, input);
+```
+
+The exported callback utility is:
+
+```typescript
+export function callback(output: Future, fn: i32, input: Future): void {
+  call_indirect(fn, output, input);
+}
+```
+
+The `malloc()` and `free()` implementations are simple wrappers around AssemblyScript globals:
+
+```typescript
+export function malloc(size: usize): usize {
+  const result = heap.alloc(size);
+  memory.fill(result, size as u8, 0);
+  return result;
+}
+
+export function free(ptr: usize) : void {
+  heap.free(ptr);
+}
+```

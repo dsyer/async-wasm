@@ -38,7 +38,7 @@ fn reset(input: &Future) -> Future {
         callback: 0,
         context: input.context,
         clen: input.clen,
-        index: input.index,
+        index: 0,
     };
 }
 

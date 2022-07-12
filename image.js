@@ -40,7 +40,11 @@ const callback = (output, fn, input, context) => {
 		value = result.value;
 		delete promises[output];
 		free(output);
-		free(result.ptr);
+		if (result.ptr) {
+			try {
+				free(result.ptr);
+			} catch (error) {}
+		}
 	}
 	free(offset);
 	free(args);

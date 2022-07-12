@@ -41,8 +41,19 @@ $(build)/$(wasm): image.o lib/libmpack.a
 		$(build)/image.o lib/libmpack.a
 	wasm-opt --enable-bulk-memory -Os $(build)/$(wasm) -o $(wasm)
 
-test:
-	npm test | tee $(build)/test.log
+test: test-c test-rust test-as
+
+test-c: c
+	cp $(build)/$(wasm) $(wasm)
+	npm test | tee -a $(build)/test.log
+
+test-rust: rust
+	cp $(target)/$(wasm) $(wasm)
+	npm test | tee -a $(build)/test.log
+
+test-as: as
+	cp $(build)/debug.wasm $(wasm)
+	npm test | tee -a $(build)/test.log
 
 $(WASI_SDK_PATH): 
 	mkdir -p tmp

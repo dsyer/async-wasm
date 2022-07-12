@@ -13,25 +13,17 @@ async function google() {
     assert.strictEqual(result.status, 301);
 }
 
-async function localhost() {
-    console.log("end to end localhost");
-    var result = await call({ spec: { image: "localhost:5000/apps/demo" } });
-    console.log("result", result);
-    assert.strictEqual(result.complete, true);
-    assert.ok(result.latestImage);
-}
-
-async function dockerhub() {
-    console.log("end to end dockerhub");
-    var result = await call({ spec: { image: "nginx" } });
-    console.log("result", result);
+async function fetchStatus(resource) {
+    console.log("end to end:", resource);
+    var result = await call(resource);
+    console.log("result:", result);
     assert.strictEqual(result.complete, true);
     assert.ok(result.latestImage);
 }
 
 await noimage();
 // await google();
-await localhost();
-await dockerhub();
+await fetchStatus({ spec: { image: "localhost:5000/apps/demo" } });
+await fetchStatus({ spec: { image: "nginx" } });
 
 console.log("ok");
