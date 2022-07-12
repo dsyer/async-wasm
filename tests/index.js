@@ -32,6 +32,6 @@ async function dockerhub() {
 await noimage();
 // await google();
 await localhost();
-// await dockerhub();
+await dockerhub();
 
 console.log("ok");
