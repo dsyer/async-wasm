@@ -47,7 +47,6 @@ function reset(input: Future) : void {
 }
 
 function status(output: Future, input: Future): void {
-  reset(output);
   var response: Response = unpack(input, extractResponse);
   if (response.status == 401) {
     authentication(output, response, input);
@@ -90,7 +89,6 @@ function authentication(output: Future, response: Response, input: Future) : voi
 }
 
 function token(output: Future, input: Future): void {
-  reset(output);
   var response: Response = unpack(input, extractResponseToken);
   if (response.status == 401) {
     authentication(output, response, input);

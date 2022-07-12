@@ -30,6 +30,7 @@ const callback = (output, fn, input, context) => {
 	const args = malloc(24);
 	new Uint8Array(memory.buffer, offset, msg.length).set(msg)
 	new Uint32Array(memory.buffer, args, 6).set([offset, msg.length, 0, context.data, context.len, output]);
+	new Uint32Array(memory.buffer, output, 6).set([0, 0, 0, context.data, context.len, 0]);
 	wasm.instance.exports.callback(output, fn, args);
 	var result = extract(output);
 	var value;
