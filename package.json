@@ -2,11 +2,11 @@
 	"type": "module",
 	"dependencies": {
 		"@msgpack/msgpack": "^2.7.2",
-		"@wapc/as-msgpack": "^0.1.13",
 		"runtime": "file:./runtime",
 		"wasi": "^0.0.6"
 	},
 	"devDependencies": {
+		"@wapc/as-msgpack": "^0.1.13",
 		"assemblyscript": "^0.20.13"
 	},
 	"exports": {
