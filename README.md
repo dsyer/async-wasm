@@ -251,10 +251,10 @@ $ node
 
 As a more "real" example we can try and write a Kubernetes resource transformation. The goal is to look in the input payload for `spec.image` and use that to extract a SHA256 label for the latest image in a Docker repository. The code for that is in `image.c`, where the call to the repository is through an external "get" function, which has to be imported into the WASM. The JavaScript implementation uses the `http` module in Node.js via a local library called "runtime".
 
-Compile the WASM:
+To compile the WASM with the implementation provided here we can't use `emcc` (version 3 and above) because it doesn't compile the basic string manipulation functions from `<string.h>`. The compilation is extracted to a `Makefile` that installs and invokes `clang`:
 
 ```
-$ emcc -Os -s ERROR_ON_UNDEFINED_SYMBOLS=0 -s EXPORTED_FUNCTIONS="[_call,_callback]" -Wl,--no-entry -I include image.c lib/libmpack.a -o image.wasm
+$ make c
 ```
 
 Here it is in action (when there is a registry running on localhost):
@@ -278,7 +278,7 @@ It also works with Dockerhub:
 }
 ```
 
-> NOTE: the HTTP return value from the `/v2` endpoint in the registry is quite large - it has all the image metadata attached - so we can't rely on just guessing if there is enough memory available at the bottom of the buffer in the WASM. We actually need to ask it to allocate and free memory for us. We use this pattern:
+> NOTE: the HTTP return value from the `/v2` endpoint in the registry is quite large - it has all the image metadata attached - so we can't rely on just guessing if there is enough memory available at the bottom of the buffer in the WASM. We actually need to ask it to allocate and free memory for us. We could use this pattern:
 >
 > ```javascript
 > const top = stackSave();
@@ -287,7 +287,7 @@ It also works with Dockerhub:
 > stackRestore(top);
 > ```
 > 
-> The stack manipulation functions come as standard with `emcc`, but using them does tie us to that toolchain, sadly.
+> The stack manipulation functions come as standard with `emcc`, so using them does tie us to that toolchain, sadly. Instead we add `malloc()` and `free()` to the exports (see below).
 
 ### ABI
 
@@ -329,13 +329,7 @@ In WASM terms the signature is `(func (param i32 i32 i32))`, where the first par
 
 ## Memory Management
 
-The `stack*` functions from `emcc` don't show up in code generated other ways, so if we want to be able to use other guest languages we need a better solution for memory management. From C we can simply export `malloc` and `free` from the standard library:
-
-```
-$ emcc -Os -s ERROR_ON_UNDEFINED_SYMBOLS=0 -s EXPORTED_FUNCTIONS="[_call,_callback, _malloc, _free]" -Wl,--no-entry -I include image.c lib/libmpack.a -o image.wasm
-```
-
-and then use it in the JavaScript. Example:
+The `stack*` functions from `emcc` don't show up in code generated other ways, so if we want to be able to use other guest languages we need a better solution for memory management. From C we can simply export `malloc` and `free` from the standard library and then use them in the JavaScript. Example:
 
 ```javascript
 export async function call(input) {
