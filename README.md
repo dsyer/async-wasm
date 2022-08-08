@@ -512,3 +512,8 @@ export function free(ptr: usize) : void {
   heap.free(ptr);
 }
 ```
+
+
+## Asyncify
+
+[Asyncify](https://kripken.github.io/blog/wasm/2019/07/16/asyncify.html) is a cunning WASM post-processor, built into `wasm-opt` as a command line flag. In principle, you write code with linear business logic and a clever runtime driver can call it in such a way that it behaves as if it was asynchronous. For our use case where the runtime is generic on the host this is quite attractive. One of the things Asyncify does is store the current stack in a generic buffer, and pop it back when it is needed (c.f. a promise resolving), so we might be able to use that instead of the manual context sloshing in the custom implementation above. Unfortunately that effort fails in AssemblyScript because there is no support for closures (yet anyway), so the stack cannot be carried into a callback like you would want to do in JavaScript, for instance. If it doesn't work in AssemblyScript we have low confidence it will work in other higher languages, and for C there are no closures even in the language, so we would need the context object. This is a dead end for now, but maybe there are some tricks to play with wrapping the callbacks in a class (e.g. see the [proxy-wasm runtime](https://github.com/solo-io/proxy-runtime) for an example).
