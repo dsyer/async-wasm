@@ -1,3 +1,4 @@
+// @ts-ignore: decorator
 @external("env", "get")
 declare function get(output: Future, callback: i32, input: Future): void
 
