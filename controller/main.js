@@ -1,5 +1,5 @@
 import * as k8s from "@kubernetes/client-node";
-import { call } from "../image.js";
+import { call } from "../index.js";
 
 const CUSTOMRESOURCE_GROUP = "example.com";
 const CUSTOMRESOURCE_VERSION = "v1";

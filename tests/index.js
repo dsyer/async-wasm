@@ -1,6 +1,6 @@
 import assert from "assert";
 
-import { call } from "../image.js";
+import { call } from "../index.js";
 
 async function noimage() {
     var result = await call({});

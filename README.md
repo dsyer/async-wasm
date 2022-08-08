@@ -260,7 +260,7 @@ $ make c
 Here it is in action (when there is a registry running on localhost):
 
 ```javascript
-> var is = await import("./image.js")
+> var is = await import("./index.js")
 > await is.call({spec:{image:"localhost:5000/apps/demo"}})
 {
   complete: true,
